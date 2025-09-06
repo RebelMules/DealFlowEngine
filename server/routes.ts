@@ -114,26 +114,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Generate file hash
           const hash = await parsingService.generateFileHash(file.path);
           
-          // Create source document record
-          const sourceDoc = await storage.createSourceDoc({
-            adWeekId,
-            kind: 'other', // Will be updated after parsing
-            filename: file.originalname,
-            mimetype: file.mimetype,
-            byteSize: file.size,
-            storagePath: file.path,
-            hash,
-          });
-
-          // Parse the file
+          // Parse the file first to get the kind and metadata
           const parseResult = await parsingService.parseFile(
             file.path, 
             file.originalname, 
             file.mimetype
           );
 
-          // Update document kind based on detection
-          // Note: In production, you'd update the sourceDoc record here
+          // Create source document record with parsing metadata
+          const sourceDoc = await storage.createSourceDoc({
+            adWeekId,
+            kind: parseResult.detectedType || 'other',
+            filename: file.originalname,
+            mimetype: file.mimetype,
+            byteSize: file.size,
+            storagePath: file.path,
+            hash,
+            meta: {
+              parsedRows: parseResult.parsedRows,
+              totalRows: parseResult.totalRows,
+              errors: parseResult.errors,
+              detectedType: parseResult.detectedType,
+              status: parseResult.errors.length > 0 ? 'parsed_with_errors' : 'parsed',
+            },
+          });
 
           // Create deal rows from parsed data
           const dealRows = parseResult.deals.map(deal => ({
