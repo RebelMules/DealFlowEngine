@@ -1,4 +1,4 @@
-import { readFile, utils, WorkBook } from 'xlsx';
+import XLSX from 'xlsx';
 import * as csv from 'csv-parse';
 import { createHash } from 'crypto';
 import { createReadStream } from 'fs';
@@ -62,10 +62,10 @@ class ParsingService {
   }
 
   private async parseExcel(filePath: string, filename: string): Promise<ParsingResult> {
-    const workbook = readFile(filePath);
+    const workbook = XLSX.readFile(filePath);
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
     
     // Detect file type based on headers and filename
     const detectedType = this.detectExcelType(jsonData as any[][], filename);
