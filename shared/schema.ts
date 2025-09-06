@@ -173,6 +173,9 @@ export const scoresRelations = relations(scores, ({ one }) => ({
 export const insertAdWeekSchema = createInsertSchema(adWeeks).omit({
   id: true,
   createdAt: true,
+}).extend({
+  start: z.coerce.date(),
+  end: z.coerce.date(),
 });
 
 export const insertSourceDocSchema = createInsertSchema(sourceDocs).omit({
