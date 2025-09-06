@@ -7,9 +7,8 @@ import {
   Inbox, 
   Coins, 
   Download, 
-  Brain,
   ChartLine,
-  Settings,
+  Settings as SettingsIcon,
   Plus,
   Menu,
   X
@@ -17,6 +16,7 @@ import {
 import { useKeyboard } from "@/hooks/useKeyboard";
 import { useWeeks } from "@/hooks/useWeeks";
 import { useToast } from "@/hooks/use-toast";
+import { Settings } from "@/components/Settings";
 
 interface LayoutProps {
   children: ReactNode;
@@ -25,17 +25,14 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const [location, navigate] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { data: weeks } = useWeeks();
   const { toast } = useToast();
   
   const currentWeek = weeks?.[0]; // Most recent week
 
-
   const handleSettings = () => {
-    toast({
-      title: "Settings",
-      description: "Settings panel coming soon...",
-    });
+    setSettingsOpen(true);
   };
   
   // Keyboard shortcuts
@@ -126,22 +123,6 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             );
           })}
-          
-          {/* AI Assistant */}
-          <div className={cn(
-            "flex items-center space-x-3 px-3 py-2 rounded-md",
-            "text-sidebar-foreground"
-          )}>
-            <Brain size={16} />
-            {sidebarOpen && (
-              <>
-                <span>AI Assistant</span>
-                <span className="ml-auto text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
-                  OFF
-                </span>
-              </>
-            )}
-          </div>
         </nav>
         
         {/* Footer */}
@@ -195,7 +176,7 @@ export function Layout({ children }: LayoutProps) {
                 onClick={handleSettings}
                 data-testid="settings-button"
               >
-                <Settings size={16} className="mr-2" />
+                <SettingsIcon size={16} className="mr-2" />
                 Settings
               </Button>
               <Button 
@@ -215,6 +196,9 @@ export function Layout({ children }: LayoutProps) {
           {children}
         </div>
       </main>
+
+      {/* Settings Dialog */}
+      <Settings open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }
