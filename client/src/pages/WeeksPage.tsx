@@ -10,7 +10,9 @@ import {
   FileText,
   TrendingUp,
   Download,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  MoreVertical
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,12 +20,30 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { WeekSelectorModal } from "@/components/WeekSelectorModal";
 import type { InsertAdWeek } from "@shared/schema";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function WeeksPage() {
   const { data: weeks, isLoading } = useWeeks();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [weekSelectorOpen, setWeekSelectorOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [weekToDelete, setWeekToDelete] = useState<{id: string, week: number} | null>(null);
 
   const createWeekMutation = useMutation({
     mutationFn: async (weekData: InsertAdWeek) => {
@@ -79,6 +99,41 @@ export default function WeeksPage() {
   const handleSelectWeek = (weekNumber: number, year: number) => {
     const weekData = generateWeekData(year, weekNumber);
     createWeekMutation.mutate(weekData);
+  };
+
+  const deleteWeekMutation = useMutation({
+    mutationFn: async (weekId: string) => {
+      const response = await apiRequest('DELETE', `/api/weeks/${weekId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Week deleted",
+        description: "The week and all associated data have been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/weeks'] });
+      setDeleteDialogOpen(false);
+      setWeekToDelete(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete the week. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Error deleting week:', error);
+    },
+  });
+
+  const handleDeleteClick = (week: {id: string, week: number}) => {
+    setWeekToDelete(week);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (weekToDelete) {
+      deleteWeekMutation.mutate(weekToDelete.id);
+    }
   };
   
   if (isLoading) {
@@ -147,10 +202,28 @@ export default function WeeksPage() {
                     Week {week.week} • {week.year}
                   </p>
                 </div>
-                <Badge className={cn("flex items-center space-x-1", getStatusColor(week.status))}>
-                  {getStatusIcon(week.status)}
-                  <span>{week.status}</span>
-                </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge className={cn("flex items-center space-x-1", getStatusColor(week.status))}>
+                    {getStatusIcon(week.status)}
+                    <span>{week.status}</span>
+                  </Badge>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical size={14} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => handleDeleteClick(week)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 size={14} className="mr-2" />
+                        Delete Week
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               <div className="text-sm text-muted-foreground mb-4">
@@ -206,6 +279,37 @@ export default function WeeksPage() {
         onSelectWeek={handleSelectWeek}
         existingWeeks={weeks?.map(w => ({ week: w.week, year: w.year, status: w.status })) || []}
       />
+
+      {/* Delete Week Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Week {weekToDelete?.week}?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span>This action will permanently delete this week and all associated data including:</span>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                <li>All uploaded documents</li>
+                <li>All parsed deals</li>
+                <li>All calculated scores</li>
+                <li>All export history</li>
+              </ul>
+              <span className="font-semibold text-destructive block">
+                This action cannot be undone.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setWeekToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleteWeekMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteWeekMutation.isPending ? "Deleting..." : "Delete Week"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

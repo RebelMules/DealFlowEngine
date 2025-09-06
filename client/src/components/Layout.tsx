@@ -261,15 +261,15 @@ export function Layout({ children }: LayoutProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Week {currentWeek?.week}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action will permanently delete this week and all associated data including:
-              <ul className="list-disc list-inside mt-2 text-sm">
+            <AlertDialogDescription className="space-y-2">
+              <span>This action will permanently delete this week and all associated data including:</span>
+              <ul className="list-disc list-inside text-sm space-y-1">
                 <li>All uploaded documents</li>
                 <li>All parsed deals</li>
                 <li>All calculated scores</li>
                 <li>All export history</li>
               </ul>
-              <span className="font-semibold text-destructive mt-2 inline-block">
+              <span className="font-semibold text-destructive block">
                 This action cannot be undone.
               </span>
             </AlertDialogDescription>
