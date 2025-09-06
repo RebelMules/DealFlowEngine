@@ -81,6 +81,8 @@ class ParsingService {
         return this.parseProducePlanner(jsonData as any[][]);
       case 'rolling-stock':
         return this.parseRollingStock(jsonData as any[][]);
+      case 'deli-bakery-planner':
+        return this.parseDeliBakeryPlanner(jsonData as any[][]);
       default:
         return await this.parseGenericExcel(jsonData as any[][], detectedType);
     }
@@ -115,6 +117,12 @@ class ParsingService {
     
     if (lowerFilename.includes('produce') && headerRow.includes('ITEM #')) {
       return 'produce-planner';
+    }
+    
+    // Deli and Bakery detection
+    if ((lowerFilename.includes('deli') || lowerFilename.includes('bakery')) && 
+        (headerRow.includes('ITEM NO') || headerRow.includes('ITEM #') || headerRow.includes('ORDER #'))) {
+      return 'deli-bakery-planner';
     }
     
     // Rolling stock
@@ -257,6 +265,111 @@ class ParsingService {
       parsedRows: 0,
       errors: ['Rolling stock parsing not yet implemented'],
       detectedType: 'rolling-stock',
+    };
+  }
+
+  private parseDeliBakeryPlanner(data: any[][]): ParsingResult {
+    const deals: ParsedDeal[] = [];
+    const errors: string[] = [];
+    let headerRowIndex = -1;
+    let headerMap: Record<string, number> = {};
+    
+    // Find header row - deli/bakery files often have headers containing ITEM NO or ORDER #
+    for (let i = 0; i < Math.min(10, data.length); i++) {
+      if (data[i] && data[i].some(cell => {
+        const str = String(cell || '').toUpperCase();
+        return str.includes('ITEM') || str.includes('ORDER') || str.includes('DESC');
+      })) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+    
+    if (headerRowIndex === -1) {
+      errors.push('Could not find header row in deli/bakery file');
+      return { deals, totalRows: data.length, parsedRows: 0, errors, detectedType: 'deli-bakery-planner' };
+    }
+    
+    // Build header map
+    const headers = data[headerRowIndex];
+    headers.forEach((header, index) => {
+      const cleanHeader = String(header || '').trim().toUpperCase();
+      headerMap[cleanHeader] = index;
+    });
+    
+    // Parse data rows - be flexible with column names for deli/bakery
+    for (let i = headerRowIndex + 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row || row.length === 0) continue;
+      
+      // Look for item code in various possible columns
+      const itemCode = String(
+        row[headerMap['ITEM NO']] || 
+        row[headerMap['ITEM #']] || 
+        row[headerMap['ORDER #']] || 
+        row[headerMap['ITEM']] ||
+        row[headerMap['ITEM CODE']] || ''
+      ).trim();
+      
+      // Look for description
+      const description = String(
+        row[headerMap['ITEM DESC']] || 
+        row[headerMap['DESCRIPTION']] || 
+        row[headerMap['DESC']] ||
+        row[headerMap['ITEM DESCRIPTION']] || ''
+      ).trim();
+      
+      // Skip empty rows or totals
+      if (!itemCode || !description || description.toLowerCase().includes('total')) continue;
+      
+      try {
+        const deal: ParsedDeal = {
+          itemCode,
+          description,
+          dept: 'Deli/Bakery', // Default department for these files
+          upc: this.cleanUPC(String(row[headerMap['UPC']] || '')),
+          cost: this.parseNumber(
+            row[headerMap['COST']] || 
+            row[headerMap['UCOST']] || 
+            row[headerMap['NET COST']] ||
+            row[headerMap['UNIT COST']]
+          ),
+          srp: this.parseNumber(
+            row[headerMap['SRP']] || 
+            row[headerMap['REGSRP']] || 
+            row[headerMap['REG SRP']] ||
+            row[headerMap['RETAIL']]
+          ),
+          adSrp: this.parseNumber(
+            row[headerMap['AD SRP']] || 
+            row[headerMap['ADSRP']] || 
+            row[headerMap['AD_SRP']] ||
+            row[headerMap['SALE']]
+          ),
+          mvmt: this.parseNumber(
+            row[headerMap['MVMT']] || 
+            row[headerMap['MOVEMENT']] || 
+            row[headerMap['UNITS']]
+          ),
+          vendorFundingPct: this.parsePercentage(
+            row[headerMap['FUNDING']] || 
+            row[headerMap['VENDOR FUNDING']] ||
+            row[headerMap['AMAP']]
+          ),
+        };
+        
+        deals.push(deal);
+      } catch (error) {
+        errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+    
+    return {
+      deals,
+      totalRows: data.length - headerRowIndex - 1,
+      parsedRows: deals.length,
+      errors: deals.length === 0 ? ['No valid deli/bakery items found. Check file format.'] : errors,
+      detectedType: 'deli-bakery-planner',
     };
   }
 
