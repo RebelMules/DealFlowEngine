@@ -15,6 +15,9 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 // Mock data - replace with real API calls
 const mockDocuments = [
@@ -68,6 +71,32 @@ const stepperSteps = [
 export default function InboxPage() {
   const { id: weekId } = useParams<{ id: string }>();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const { toast } = useToast();
+
+  const scoreAllDealsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/weeks/${weekId}/score`);
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Scoring Complete",
+        description: `Successfully scored ${data.scored} deals with average score ${data.averageScore.toFixed(1)}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Scoring Failed",
+        description: "Failed to score deals. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Error scoring deals:', error);
+    },
+  });
+
+  const handleScoreAllDeals = () => {
+    scoreAllDealsMutation.mutate();
+  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -112,9 +141,14 @@ export default function InboxPage() {
                 </p>
               </div>
             </div>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="score-all-deals">
+            <Button 
+              onClick={handleScoreAllDeals}
+              disabled={scoreAllDealsMutation.isPending}
+              className="bg-primary text-primary-foreground hover:bg-primary/90" 
+              data-testid="score-all-deals"
+            >
               <FileText size={16} className="mr-2" />
-              Score All Deals
+              {scoreAllDealsMutation.isPending ? "Scoring..." : "Score All Deals"}
             </Button>
           </div>
         </div>
