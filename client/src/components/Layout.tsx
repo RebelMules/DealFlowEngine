@@ -98,8 +98,8 @@ export function Layout({ children }: LayoutProps) {
       year,
       week: nextWeek,
       label: `${year}-W${nextWeek.toString().padStart(2, '0')}`,
-      start: weekStart,
-      end: weekEnd,
+      start: weekStart.toISOString(),
+      end: weekEnd.toISOString(),
       status: "Inbox" as const,
     };
   };
