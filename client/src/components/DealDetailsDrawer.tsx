@@ -14,10 +14,10 @@ interface Deal {
   itemCode: string;
   description: string;
   dept: string;
-  cost?: number;
-  srp?: number;
-  adSrp?: number;
-  mvmt?: number;
+  cost?: number | null;
+  srp?: number | null;
+  adSrp?: number | null;
+  mvmt?: number | null;
   score?: {
     total: number;
     components: {

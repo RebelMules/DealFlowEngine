@@ -66,7 +66,7 @@ Return only valid JSON array, no additional text.`;
         messages: [{ role: 'user', content: prompt }],
       });
 
-      const content = response.content[0].text;
+      const content = response.content[0].type === 'text' ? response.content[0].text : '';
       const deals = JSON.parse(content);
 
       // Track usage (simplified - in production would calculate actual token costs)
@@ -105,7 +105,7 @@ Provide a concise, buyer-friendly explanation focusing on why this deal scores w
 
       this.weeklySpent += 0.05;
 
-      return response.content[0].text.trim();
+      return response.content[0].type === 'text' ? response.content[0].text.trim() : originalReason;
     } catch (error) {
       console.error('AI refinement error:', error);
       return originalReason;
@@ -136,7 +136,7 @@ Return JSON with format: {"items": [...], "themes": [...]}`;
         messages: [{ role: 'user', content: prompt }],
       });
 
-      const result = JSON.parse(response.content[0].text);
+      const result = JSON.parse(response.content[0].type === 'text' ? response.content[0].text : '{}');
       this.weeklySpent += 0.08;
 
       return result;

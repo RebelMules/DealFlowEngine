@@ -50,7 +50,7 @@ class ParsingService {
         deals: [],
         totalRows: 0,
         parsedRows: 0,
-        errors: [`Failed to parse file: ${error.message}`],
+        errors: [`Failed to parse file: ${error instanceof Error ? error.message : 'Unknown error'}`],
         detectedType: 'unknown',
       };
     }
@@ -192,7 +192,7 @@ class ParsingService {
         
         deals.push(deal);
       } catch (error) {
-        errors.push(`Row ${i + 1}: ${error.message}`);
+        errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
     

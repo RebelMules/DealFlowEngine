@@ -34,7 +34,7 @@ export default function ExportsPage() {
   const [isExporting, setIsExporting] = useState(false);
 
   // Fetch export history
-  const { data: exports, isLoading } = useQuery({
+  const { data: exports = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/weeks', weekId, 'exports'],
     enabled: !!weekId,
   });
@@ -196,7 +196,7 @@ export default function ExportsPage() {
           {exports && exports.length > 0 ? (
             <div className="space-y-3">
               {exports.map((exportItem: any) => (
-                <Card key={exportItem.id} className="hover:bg-accent/30 transition-colors">
+                <Card key={exportItem.id} className="hover:bg-accent hover:bg-opacity-30 transition-colors">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">

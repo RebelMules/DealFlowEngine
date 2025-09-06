@@ -293,7 +293,7 @@ class ExportService {
     try {
       await fs.unlink(filePath);
     } catch (error) {
-      console.error('Error deleting export file:', error);
+      console.error('Error deleting export file:', error instanceof Error ? error.message : 'Unknown error');
     }
   }
 }

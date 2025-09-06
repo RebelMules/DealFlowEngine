@@ -145,7 +145,7 @@ export default function InboxPage() {
         {/* Documents List */}
         <div className="space-y-4">
           {mockDocuments.map((doc) => (
-            <Card key={doc.id} className="hover:bg-accent/30 transition-colors">
+            <Card key={doc.id} className="hover:bg-accent hover:bg-opacity-30 transition-colors">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

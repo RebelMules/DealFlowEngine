@@ -68,7 +68,7 @@ export default function WeeksPage() {
       {/* Weeks Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {weeks?.map((week) => (
-          <Card key={week.id} className="hover:bg-accent/50 transition-colors">
+          <Card key={week.id} className="hover:bg-accent hover:bg-opacity-50 transition-colors">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>

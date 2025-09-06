@@ -106,7 +106,7 @@
 
 /* Table row hover effects */
 .table-row-hover {
-  @apply transition-colors hover:bg-accent/50;
+  @apply transition-colors hover:bg-accent hover:bg-opacity-50;
 }
 
 /* Score chip styling */

@@ -16,8 +16,8 @@ interface Deal {
   itemCode: string;
   description: string;
   dept: string;
-  cost?: number;
-  adSrp?: number;
+  cost?: number | null;
+  adSrp?: number | null;
   score?: {
     total: number;
     components: {

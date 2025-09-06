@@ -161,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`Error processing file ${file.originalname}:`, error);
           results.push({
             file: file.originalname,
-            error: error.message,
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       }
