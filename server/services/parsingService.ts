@@ -461,25 +461,52 @@ class ParsingService {
   }
 
   private mapGenericRowToDeal(row: any): ParsedDeal {
-    // Generic mapping - tries common column name variations
-    const itemCode = row['Item Code'] || row['CODE'] || row['ITEM NO'] || row['ORDER #'] || '';
-    const description = row['Description'] || row['ITEM DESC'] || row['PRODUCT DESCRIPTION'] || '';
-    const dept = row['Department'] || row['DEPT'] || row['RETAIL DEPT'] || '';
+    // Generic mapping - tries common column name variations (case-insensitive)
+    const findColumn = (variations: string[]): any => {
+      for (const key of Object.keys(row)) {
+        const keyUpper = key.toUpperCase();
+        for (const variation of variations) {
+          if (keyUpper.includes(variation.toUpperCase())) {
+            return row[key];
+          }
+        }
+      }
+      return undefined;
+    };
+    
+    const itemCode = findColumn(['ITEM CODE', 'CODE', 'ITEM NO', 'ORDER #', 'ITEM', 'SKU', 'PRODUCT CODE']) || '';
+    const description = findColumn(['DESCRIPTION', 'ITEM DESC', 'PRODUCT DESCRIPTION', 'NAME', 'PRODUCT NAME']) || '';
+    const dept = findColumn(['DEPARTMENT', 'DEPT', 'RETAIL DEPT', 'CATEGORY']) || '';
     
     if (!itemCode || !description) {
       throw new Error('Missing required fields');
     }
     
+    // More aggressive search for cost and price fields
+    const cost = this.parseNumber(
+      findColumn(['COST', 'NET COST', 'UCOST', 'UNIT COST', 'CASE COST', 'WHOLESALE'])
+    );
+    
+    const srp = this.parseNumber(
+      findColumn(['SRP', 'REGSRP', 'REGULAR PRICE', 'RETAIL', 'RETAIL PRICE', 'REG PRICE'])
+    );
+    
+    const adSrp = this.parseNumber(
+      findColumn(['AD PRICE', 'AD SRP', 'SALE PRICE', 'PROMO PRICE', 'SPECIAL', 'AD'])
+    );
+    
     return {
       itemCode: String(itemCode).trim(),
       description: String(description).trim(),
       dept: this.normalizeDept(String(dept)),
-      cost: this.parseNumber(row['Cost'] || row['NET COST'] || row['UCOST']),
-      srp: this.parseNumber(row['SRP'] || row['REGSRP']),
-      adSrp: this.parseNumber(row['Ad Price'] || row['AD SRP']),
-      upc: this.cleanUPC(String(row['UPC'] || '')),
-      pack: String(row['Pack'] || row['PK'] || '').trim() || undefined,
-      size: String(row['Size'] || row['SZ'] || '').trim() || undefined,
+      cost: cost,
+      srp: srp,
+      adSrp: adSrp,
+      upc: this.cleanUPC(String(findColumn(['UPC', 'BARCODE', 'EAN']) || '')),
+      pack: String(findColumn(['PACK', 'PK', 'PACKAGE', 'CASE']) || '').trim() || undefined,
+      size: String(findColumn(['SIZE', 'SZ', 'WEIGHT', 'WT']) || '').trim() || undefined,
+      mvmt: this.parseNumber(findColumn(['MVMT', 'MOVEMENT', 'VELOCITY', 'UNITS'])),
+      vendorFundingPct: this.parsePercentage(findColumn(['FUNDING', 'VENDOR FUNDING', 'REBATE', 'ALLOWANCE'])),
     };
   }
 

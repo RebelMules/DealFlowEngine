@@ -53,8 +53,23 @@ export default function InboxPage() {
 
   const scoreAllDealsMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('POST', `/api/weeks/${weekId}/score`);
-      return await response.json();
+      try {
+        const response = await fetch(`/api/weeks/${weekId}/score`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw data; // Throw the error data to be caught in onError
+        }
+        
+        return data;
+      } catch (error) {
+        throw error;
+      }
     },
     onSuccess: (data) => {
       toast({
@@ -62,10 +77,21 @@ export default function InboxPage() {
         description: `Successfully scored ${data.scored} deals with average score ${data.averageScore.toFixed(1)}`,
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Get the actual error message from the error object
+      let errorMessage = "Failed to score deals. Please try again.";
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      if (error?.issues && error.issues.length > 0) {
+        errorMessage = `Quality check failed:\n${error.issues.join('\n')}`;
+      }
+      
       toast({
         title: "Scoring Failed",
-        description: "Failed to score deals. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
       console.error('Error scoring deals:', error);
