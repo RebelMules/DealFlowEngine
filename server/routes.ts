@@ -86,6 +86,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete ad week and all associated data
+  app.delete("/api/weeks/:id", async (req, res) => {
+    try {
+      const weekId = req.params.id;
+      
+      // Check if week exists
+      const week = await storage.getAdWeek(weekId);
+      if (!week) {
+        return res.status(404).json({ message: "Week not found" });
+      }
+      
+      // Delete the week and all associated data
+      await storage.deleteAdWeek(weekId);
+      
+      res.json({ success: true, message: "Week and all associated data deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting week:", error);
+      res.status(500).json({ message: "Failed to delete week" });
+    }
+  });
+
   // Get source documents for a week
   app.get("/api/weeks/:id/documents", async (req, res) => {
     try {
