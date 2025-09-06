@@ -37,6 +37,13 @@ export default function DealsPage() {
   const [scoreFilter, setScoreFilter] = useState<string>("all");
   const [isScoring, setIsScoring] = useState(false);
 
+  const handleFilters = () => {
+    toast({
+      title: "Filters",
+      description: "Advanced filters panel coming soon...",
+    });
+  };
+
   // Calculate statistics
   const totalDeals = deals?.length || 0;
   const scoredDeals = deals?.filter(d => d.score) || [];
@@ -190,7 +197,12 @@ export default function DealsPage() {
                 <Sliders size={16} className="mr-2" />
                 Weights
               </Button>
-              <Button variant="outline" size="sm" data-testid="filters-button">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleFilters}
+                data-testid="filters-button"
+              >
                 <Filter size={16} className="mr-2" />
                 Filters
               </Button>
