@@ -31,6 +31,7 @@ export interface IStorage {
   getSourceDoc(id: string): Promise<SourceDoc | undefined>;
   createSourceDoc(sourceDoc: InsertSourceDoc): Promise<SourceDoc>;
   updateSourceDoc(id: string, updates: Partial<InsertSourceDoc>): Promise<void>;
+  deleteSourceDoc(id: string): Promise<void>;
   
   // DealRow operations
   getDealRowsByWeek(adWeekId: string): Promise<DealRow[]>;
@@ -208,6 +209,20 @@ export class DatabaseStorage implements IStorage {
     
     // Finally delete the week itself
     await db.delete(adWeeks).where(eq(adWeeks.id, id));
+  }
+
+  async deleteSourceDoc(id: string): Promise<void> {
+    // First delete all scores associated with deal rows from this document
+    const documentDealRows = await db.select().from(dealRows).where(eq(dealRows.sourceDocId, id));
+    for (const dealRow of documentDealRows) {
+      await db.delete(scores).where(eq(scores.dealRowId, dealRow.id));
+    }
+    
+    // Delete all deal rows for this document
+    await db.delete(dealRows).where(eq(dealRows.sourceDocId, id));
+    
+    // Finally delete the source document itself
+    await db.delete(sourceDocs).where(eq(sourceDocs.id, id));
   }
 }
 
