@@ -16,12 +16,14 @@ import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { WeekSelectorModal } from "@/components/WeekSelectorModal";
 import type { InsertAdWeek } from "@shared/schema";
 
 export default function WeeksPage() {
   const { data: weeks, isLoading } = useWeeks();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [weekSelectorOpen, setWeekSelectorOpen] = useState(false);
 
   const createWeekMutation = useMutation({
     mutationFn: async (weekData: InsertAdWeek) => {
@@ -45,28 +47,9 @@ export default function WeeksPage() {
     },
   });
 
-  // Helper function to calculate next week's data
-  const generateNextWeek = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    
-    // Calculate ISO week number
-    const getISOWeek = (date: Date) => {
-      const target = new Date(date.valueOf());
-      const dayNumber = (date.getDay() + 6) % 7;
-      target.setDate(target.getDate() - dayNumber + 3);
-      const firstThursday = target.valueOf();
-      target.setMonth(0, 1);
-      if (target.getDay() !== 4) {
-        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
-      }
-      return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
-    };
-
-    const currentWeek = getISOWeek(now);
-    const nextWeek = currentWeek + 1;
-
-    // Calculate start and end dates for the next week
+  // Helper function to generate week data for a specific week
+  const generateWeekData = (year: number, weekNumber: number) => {
+    // Calculate start and end dates for the week
     const getDateOfISOWeek = (year: number, week: number) => {
       const simple = new Date(year, 0, 1 + (week - 1) * 7);
       const dow = simple.getDay();
@@ -79,23 +62,23 @@ export default function WeeksPage() {
       return ISOweekStart;
     };
 
-    const weekStart = getDateOfISOWeek(year, nextWeek);
+    const weekStart = getDateOfISOWeek(year, weekNumber);
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
 
     return {
       year,
-      week: nextWeek,
-      label: `${year}-W${nextWeek.toString().padStart(2, '0')}`,
+      week: weekNumber,
+      label: `${year}-W${weekNumber.toString().padStart(2, '0')}`,
       start: weekStart,
       end: weekEnd,
       status: "Inbox" as const,
     };
   };
 
-  const handleCreateWeek = () => {
-    const nextWeekData = generateNextWeek();
-    createWeekMutation.mutate(nextWeekData);
+  const handleSelectWeek = (weekNumber: number, year: number) => {
+    const weekData = generateWeekData(year, weekNumber);
+    createWeekMutation.mutate(weekData);
   };
   
   if (isLoading) {
@@ -141,12 +124,12 @@ export default function WeeksPage() {
           </p>
         </div>
         <Button 
-          onClick={handleCreateWeek}
+          onClick={() => setWeekSelectorOpen(true)}
           disabled={createWeekMutation.isPending}
           data-testid="create-week-button"
         >
           <Plus size={16} className="mr-2" />
-          {createWeekMutation.isPending ? "Creating..." : "Create New Week"}
+          {createWeekMutation.isPending ? "Creating..." : "Add Week"}
         </Button>
       </div>
 
@@ -206,15 +189,23 @@ export default function WeeksPage() {
             Create your first ad week to start optimizing deals
           </p>
           <Button 
-            onClick={handleCreateWeek}
+            onClick={() => setWeekSelectorOpen(true)}
             disabled={createWeekMutation.isPending}
             data-testid="create-first-week-button"
           >
             <Plus size={16} className="mr-2" />
-            {createWeekMutation.isPending ? "Creating..." : "Create First Week"}
+            {createWeekMutation.isPending ? "Creating..." : "Add First Week"}
           </Button>
         </div>
       )}
+      
+      {/* Week Selector Modal */}
+      <WeekSelectorModal
+        open={weekSelectorOpen}
+        onOpenChange={setWeekSelectorOpen}
+        onSelectWeek={handleSelectWeek}
+        existingWeeks={weeks?.map(w => ({ week: w.week, year: w.year, status: w.status })) || []}
+      />
     </div>
   );
 }
