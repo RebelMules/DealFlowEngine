@@ -219,44 +219,6 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
         <div className="text-sm text-muted-foreground">
           {selectedDeals.size > 0 && `${selectedDeals.size} selected`}
         </div>
-            size="sm"
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
-            data-testid="previous-page"
-          >
-            <ChevronLeft size={16} className="mr-1" />
-            Previous
-          </Button>
-          
-          {/* Page numbers */}
-          <div className="flex items-center space-x-1">
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const pageNum = Math.max(1, Math.min(totalPages, currentPage - 2 + i));
-              return (
-                <Button
-                  key={pageNum}
-                  variant={currentPage === pageNum ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentPage(pageNum)}
-                  data-testid={`page-${pageNum}`}
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-          </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
-            data-testid="next-page"
-          >
-            Next
-            <ChevronRight size={16} className="ml-1" />
-          </Button>
-        </div>
       </div>
     </div>
   );
