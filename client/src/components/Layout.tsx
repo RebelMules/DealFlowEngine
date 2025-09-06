@@ -44,7 +44,13 @@ export function Layout({ children }: LayoutProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const currentWeek = weeks?.[0]; // Most recent week
+  // Extract week ID from URL path
+  const weekIdFromUrl = location.match(/\/weeks\/([^/]+)/)?.[1];
+  
+  // Find the current week based on URL, fallback to most recent week
+  const currentWeek = weekIdFromUrl 
+    ? weeks?.find(w => w.id === weekIdFromUrl) || weeks?.[0]
+    : weeks?.[0];
 
   const handleSettings = () => {
     setSettingsOpen(true);
@@ -104,25 +110,25 @@ export function Layout({ children }: LayoutProps) {
       key: 'inbox',
       icon: Inbox,
       label: 'Weekly Inbox',
-      href: currentWeek ? `/weeks/${currentWeek.id}/inbox` : '/weeks',
+      href: weekIdFromUrl ? `/weeks/${weekIdFromUrl}/inbox` : (currentWeek ? `/weeks/${currentWeek.id}/inbox` : '/weeks'),
       active: location.includes('/inbox'),
-      disabled: !currentWeek,
+      disabled: !currentWeek && !weekIdFromUrl,
     },
     {
       key: 'deals',
       icon: Coins,
       label: 'Deal Scoring',
-      href: currentWeek ? `/weeks/${currentWeek.id}/deals` : '/weeks',
+      href: weekIdFromUrl ? `/weeks/${weekIdFromUrl}/deals` : (currentWeek ? `/weeks/${currentWeek.id}/deals` : '/weeks'),
       active: location.includes('/deals'),
-      disabled: !currentWeek,
+      disabled: !currentWeek && !weekIdFromUrl,
     },
     {
       key: 'exports',
       icon: Download,
       label: 'Exports',
-      href: currentWeek ? `/weeks/${currentWeek.id}/exports` : '/weeks',
+      href: weekIdFromUrl ? `/weeks/${weekIdFromUrl}/exports` : (currentWeek ? `/weeks/${currentWeek.id}/exports` : '/weeks'),
       active: location.includes('/exports'),
-      disabled: !currentWeek,
+      disabled: !currentWeek && !weekIdFromUrl,
     },
   ];
 
