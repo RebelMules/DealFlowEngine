@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { FileUpload } from "@/components/FileUpload";
 import { ProgressStepper } from "@/components/ProgressStepper";
+import { ColumnMappingModal } from "@/components/ColumnMappingModal";
 import { 
   Upload, 
   FileText, 
@@ -43,6 +44,11 @@ const stepperSteps = [
 export default function InboxPage() {
   const { id: weekId } = useParams<{ id: string }>();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [columnMappingModal, setColumnMappingModal] = useState<{
+    isOpen: boolean;
+    documentId: string;
+    documentName: string;
+  }>({ isOpen: false, documentId: "", documentName: "" });
   const { toast } = useToast();
 
   // Fetch documents for this week
@@ -287,9 +293,10 @@ export default function InboxPage() {
                       size="sm"
                       title="Map Columns"
                       onClick={() => {
-                        toast({
-                          title: "Column Mapping",
-                          description: "Column mapping configuration coming soon. The system automatically detects standard columns for now.",
+                        setColumnMappingModal({
+                          isOpen: true,
+                          documentId: doc.id,
+                          documentName: doc.filename,
                         });
                       }}
                       data-testid={`map-columns-${doc.id}`}
@@ -330,6 +337,14 @@ export default function InboxPage() {
           </div>
         )}
       </div>
+
+      {/* Column Mapping Modal */}
+      <ColumnMappingModal
+        isOpen={columnMappingModal.isOpen}
+        onClose={() => setColumnMappingModal({ isOpen: false, documentId: "", documentName: "" })}
+        documentId={columnMappingModal.documentId}
+        documentName={columnMappingModal.documentName}
+      />
     </div>
   );
 }
