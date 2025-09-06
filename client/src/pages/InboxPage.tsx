@@ -15,49 +15,21 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { SourceDoc } from "@shared/schema";
 
-// Mock data - replace with real API calls
-const mockDocuments = [
-  {
-    id: '1',
-    filename: 'Hernando_Ad_Planner_W26.xlsx',
-    kind: 'ad-planner',
-    vendor: 'Hernando',
-    byteSize: 2048576,
-    parsedRows: 847,
-    totalRows: 888,
-    status: 'parsed',
-    detectedType: 'Ad Planner',
-    errors: [],
-  },
-  {
-    id: '2',
-    filename: 'Meat_Planner_Jun25.xlsx',
-    kind: 'meat-planner',
-    vendor: 'Meat Dept',
-    byteSize: 1024000,
-    parsedRows: 156,
-    totalRows: 160,
-    status: 'parsed',
-    detectedType: 'Meat Planner',
-    errors: ['4 rows missing cost data'],
-  },
-  {
-    id: '3',
-    filename: 'Alliance_Group_Buy_Summer.pdf',
-    kind: 'group-buy-pdf',
-    vendor: 'Alliance',
-    byteSize: 8192000,
-    parsedRows: 0,
-    totalRows: 0,
-    status: 'ai_required',
-    detectedType: 'Group Buy PDF',
-    errors: ['PDF parsing requires AI service'],
-  },
-];
+// Extended type for documents with parsing info stored in meta field
+interface DocumentWithMeta extends SourceDoc {
+  meta: {
+    parsedRows?: number;
+    totalRows?: number;
+    errors?: string[];
+    detectedType?: string;
+    status?: string;
+  } | null;
+}
 
 const stepperSteps = [
   { key: 'ingest', label: 'Ingest', completed: true, active: false },
@@ -72,6 +44,12 @@ export default function InboxPage() {
   const { id: weekId } = useParams<{ id: string }>();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const { toast } = useToast();
+
+  // Fetch documents for this week
+  const { data: documents = [], isLoading, refetch } = useQuery<DocumentWithMeta[]>({
+    queryKey: ['/api/weeks', weekId, 'documents'],
+    enabled: !!weekId,
+  });
 
   const scoreAllDealsMutation = useMutation({
     mutationFn: async () => {
@@ -106,7 +84,7 @@ export default function InboxPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined) => {
     switch (status) {
       case 'parsed': return 'bg-green-500/20 text-green-400';
       case 'parsing': return 'bg-yellow-500/20 text-yellow-400';
@@ -116,10 +94,11 @@ export default function InboxPage() {
     }
   };
 
-  const totalParsedRows = mockDocuments.reduce((sum, doc) => sum + doc.parsedRows, 0);
+  // Calculate total parsed rows from documents
+  const totalParsedRows = documents.reduce((sum, doc) => sum + (doc.meta?.parsedRows || 0), 0);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col">
       {/* Progress Stepper */}
       <ProgressStepper 
         steps={stepperSteps}
@@ -128,7 +107,7 @@ export default function InboxPage() {
       />
 
       {/* Content */}
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 overflow-y-auto p-6">
         {/* Quality Gate Banner */}
         <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
           <div className="flex items-center justify-between">
@@ -170,15 +149,21 @@ export default function InboxPage() {
               onClose={() => setUploadModalOpen(false)}
               onUploadComplete={() => {
                 setUploadModalOpen(false);
-                // TODO: Refetch documents
+                refetch(); // Refetch documents after upload
               }}
             />
           )}
         </div>
 
         {/* Documents List */}
+        {isLoading ? (
+          <div className="flex items-center justify-center h-32">
+            <RefreshCw className="animate-spin text-muted-foreground" size={24} />
+            <span className="ml-2 text-muted-foreground">Loading documents...</span>
+          </div>
+        ) : (
         <div className="space-y-4">
-          {mockDocuments.map((doc) => (
+          {documents.map((doc) => (
             <Card key={doc.id} className="hover:bg-accent hover:bg-opacity-30 transition-colors">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -186,37 +171,39 @@ export default function InboxPage() {
                     <div className="flex items-center space-x-3 mb-2">
                       <FileText size={20} className="text-muted-foreground" />
                       <h3 className="font-medium text-card-foreground">{doc.filename}</h3>
-                      <Badge className={cn("text-xs", getStatusColor(doc.status))}>
-                        {doc.status.replace('_', ' ').toUpperCase()}
-                      </Badge>
+                      {doc.meta?.status && (
+                        <Badge className={cn("text-xs", getStatusColor(doc.meta.status))}>
+                          {doc.meta.status.replace('_', ' ').toUpperCase()}
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="flex items-center space-x-6 text-sm text-muted-foreground mb-3">
-                      <span>Type: {doc.detectedType}</span>
+                      <span>Type: {doc.meta?.detectedType || doc.kind}</span>
                       <span>Size: {formatFileSize(doc.byteSize)}</span>
                       {doc.vendor && <span>Vendor: {doc.vendor}</span>}
                     </div>
 
-                    {doc.status === 'parsed' && (
+                    {doc.meta?.status === 'parsed' && doc.meta?.totalRows && doc.meta.totalRows > 0 && (
                       <div className="mb-3">
                         <div className="flex items-center justify-between text-sm mb-1">
                           <span className="text-card-foreground">Parsing Progress</span>
                           <span className="text-muted-foreground">
-                            {doc.parsedRows} / {doc.totalRows} rows
+                            {doc.meta.parsedRows} / {doc.meta.totalRows} rows
                           </span>
                         </div>
                         <Progress 
-                          value={(doc.parsedRows / doc.totalRows) * 100} 
+                          value={(doc.meta.parsedRows! / doc.meta.totalRows) * 100} 
                           className="h-2"
                         />
                       </div>
                     )}
 
-                    {doc.errors.length > 0 && (
+                    {doc.meta?.errors && doc.meta.errors.length > 0 && (
                       <div className="mb-3">
                         <p className="text-xs text-yellow-400 mb-1">Warnings:</p>
                         <ul className="list-disc list-inside text-xs text-muted-foreground">
-                          {doc.errors.map((error, index) => (
+                          {doc.meta.errors.map((error: string, index: number) => (
                             <li key={index}>{error}</li>
                           ))}
                         </ul>
@@ -273,8 +260,9 @@ export default function InboxPage() {
             </Card>
           ))}
         </div>
+        )}
 
-        {mockDocuments.length === 0 && (
+        {!isLoading && documents.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 bg-muted/20 rounded-lg border-2 border-dashed border-muted">
             <Upload size={48} className="text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold text-card-foreground mb-2">
