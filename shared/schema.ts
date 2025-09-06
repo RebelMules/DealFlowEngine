@@ -51,11 +51,15 @@ export const dealRows = pgTable("deal_rows", {
   description: text("description").notNull(),
   dept: varchar("dept", { length: 50 }).notNull(),
   upc: varchar("upc", { length: 20 }),
-  cost: real("cost"),
+  cost: real("cost"), // case cost
+  netUnitCost: real("net_unit_cost"), // net unit cost for margin calculation
   srp: real("srp"), // regular selling price
   adSrp: real("ad_srp"), // advertised selling price
   vendorFundingPct: real("vendor_funding_pct"),
   mvmt: real("mvmt"), // movement multiplier
+  adScan: real("ad_scan"), // ADSCAN value
+  tprScan: real("tpr_scan"), // TPRSCAN value
+  edlcScan: real("edlc_scan"), // EDLC SCAN value
   competitorPrice: real("competitor_price"),
   pack: varchar("pack", { length: 20 }),
   size: varchar("size", { length: 50 }),

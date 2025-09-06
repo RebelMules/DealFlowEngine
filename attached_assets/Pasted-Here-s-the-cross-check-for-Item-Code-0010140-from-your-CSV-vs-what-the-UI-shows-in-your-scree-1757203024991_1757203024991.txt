@@ -1,0 +1,73 @@
+Here’s the cross-check for **Item Code 0010140** (from your CSV) vs. what the UI shows in your screenshots — and the exact fix.
+
+## Ground truth (from your CSV)
+
+* **Item Code:** `0010140`
+* **Description:** `PRO CHKPEA NDL SOUP`
+* **Dept:** `Grocery - Dry`
+* **COST:** **\$38.33**
+* **NET UNIT COST:** **\$1.72**
+* **AD SRP:** **\$8.00**
+* **REG SRP:** **\$4.39**
+* **Aggregated Scan (ADSCAN + EDLC SCAN + TPRSCAN):** **1.47** (0.81 + 0.66 + 0)
+* **Required SRP @ 30% margin:** `1.72 / (1 - 0.30) = **$2.46**`
+
+I pulled these straight from the uploaded CSV and computed the aggregates.
+
+## What your UI shows (from the screenshot)
+
+* **Cost:** \$38.33
+* **Ad SRP:** \$8.00
+* **Margin:** **−379.1%**
+
+That negative margin is exactly what you get if you (incorrectly) compute margin using **COST** rather than **NET UNIT COST**:
+
+$$
+(8.00 - 38.33) / 8.00 = -3.79125 = -379.1\%
+$$
+
+## The bug
+
+Your “Margin” component in the right panel and in the score is using **COST**.
+It must use **NET UNIT COST**.
+
+## The fix (drop into Replit)
+
+1. In your selector / calc where margin is derived (e.g., `selectors.ts` or wherever you compute the panel fields), switch to **netUnitCost**:
+
+```ts
+// WRONG (current behavior)
+const marginPct = adSrp && cost != null ? (adSrp - cost) / adSrp : null;
+
+// RIGHT
+const marginPct = adSrp && netUnitCost != null ? (adSrp - netUnitCost) / adSrp : null;
+```
+
+2. For **Required SRP**, compute from **netUnitCost** and the margin target:
+
+```ts
+const targetMargin = weights?.marginTarget ?? 0.30; // 30% default
+const requiredSrp = netUnitCost != null ? netUnitCost / (1 - targetMargin) : null;
+```
+
+3. Show **Aggregated Scan** per Item Code (sum of `ADSCAN + TPRSCAN + EDLC SCAN` across all rows for that item code) and add a small badge in the table:
+
+```tsx
+<span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs border">
+  Scan: {Math.round(row.scanAgg ?? 0)}
+</span>
+```
+
+4. In the **Deal Details** panel, display:
+
+* **Aggregated Scan:** `1.47`
+* **Required SRP @ 30%:** `$2.46`
+* **Margin (now correct):** `(8.00 - 1.72)/8.00 = **78.5%**`
+
+## Quick acceptance check (0010140)
+
+* Margin switches from **−379.1%** ➜ **+78.5%**
+* Required SRP @30% shows **\$2.46**
+* “Scan: **1.47**” appears on the row and in the panel
+
+If you want, I can hand you a tiny PR snippet that wires `scanAgg` and `requiredSrp` into your existing table and details components—just tell me which files in **DealFlowEngine** back this page (table component + details panel + selectors).
