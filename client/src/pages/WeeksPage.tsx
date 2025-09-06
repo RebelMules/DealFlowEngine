@@ -13,9 +13,90 @@ import {
   AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { InsertAdWeek } from "@shared/schema";
 
 export default function WeeksPage() {
   const { data: weeks, isLoading } = useWeeks();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const createWeekMutation = useMutation({
+    mutationFn: async (weekData: InsertAdWeek) => {
+      const response = await apiRequest('POST', '/api/weeks', weekData);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/weeks'] });
+      toast({
+        title: "Week Created",
+        description: "New ad week has been created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to create new week",
+        variant: "destructive",
+      });
+      console.error('Error creating week:', error);
+    },
+  });
+
+  // Helper function to calculate next week's data
+  const generateNextWeek = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    
+    // Calculate ISO week number
+    const getISOWeek = (date: Date) => {
+      const target = new Date(date.valueOf());
+      const dayNumber = (date.getDay() + 6) % 7;
+      target.setDate(target.getDate() - dayNumber + 3);
+      const firstThursday = target.valueOf();
+      target.setMonth(0, 1);
+      if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+      }
+      return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+    };
+
+    const currentWeek = getISOWeek(now);
+    const nextWeek = currentWeek + 1;
+
+    // Calculate start and end dates for the next week
+    const getDateOfISOWeek = (year: number, week: number) => {
+      const simple = new Date(year, 0, 1 + (week - 1) * 7);
+      const dow = simple.getDay();
+      const ISOweekStart = simple;
+      if (dow <= 4) {
+        ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+      } else {
+        ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+      }
+      return ISOweekStart;
+    };
+
+    const weekStart = getDateOfISOWeek(year, nextWeek);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    return {
+      year,
+      week: nextWeek,
+      label: `${year}-W${nextWeek.toString().padStart(2, '0')}`,
+      start: weekStart,
+      end: weekEnd,
+      status: "Inbox" as const,
+    };
+  };
+
+  const handleCreateWeek = () => {
+    const nextWeekData = generateNextWeek();
+    createWeekMutation.mutate(nextWeekData);
+  };
   
   if (isLoading) {
     return (
@@ -59,9 +140,13 @@ export default function WeeksPage() {
             Manage weekly deal optimization cycles
           </p>
         </div>
-        <Button data-testid="create-week-button">
+        <Button 
+          onClick={handleCreateWeek}
+          disabled={createWeekMutation.isPending}
+          data-testid="create-week-button"
+        >
           <Plus size={16} className="mr-2" />
-          Create New Week
+          {createWeekMutation.isPending ? "Creating..." : "Create New Week"}
         </Button>
       </div>
 
@@ -120,9 +205,13 @@ export default function WeeksPage() {
           <p className="text-muted-foreground mb-4">
             Create your first ad week to start optimizing deals
           </p>
-          <Button data-testid="create-first-week-button">
+          <Button 
+            onClick={handleCreateWeek}
+            disabled={createWeekMutation.isPending}
+            data-testid="create-first-week-button"
+          >
             <Plus size={16} className="mr-2" />
-            Create First Week
+            {createWeekMutation.isPending ? "Creating..." : "Create First Week"}
           </Button>
         </div>
       )}
