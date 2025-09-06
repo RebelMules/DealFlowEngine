@@ -200,6 +200,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Re-parse a single document
+  app.post("/api/documents/:id/reparse", async (req, res) => {
+    try {
+      const docId = req.params.id;
+      const doc = await storage.getSourceDoc(docId);
+      
+      if (!doc) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Delete existing deals for this document
+      await storage.deleteDealRowsByDocument(docId);
+      
+      // Re-parse the document
+      const parseResult = await parsingService.parseFile(doc.storagePath, doc.filename, doc.mimetype);
+      
+      // Update document metadata
+      await storage.updateSourceDoc(docId, {
+        meta: {
+          parsedRows: parseResult.parsedRows,
+          totalRows: parseResult.totalRows,
+          errors: parseResult.errors,
+          detectedType: parseResult.detectedType,
+          status: parseResult.errors.length > 0 ? 'parsed_with_errors' : 'parsed',
+        },
+      });
+      
+      // Create new deal rows
+      const dealRows = parseResult.deals.map(deal => ({
+        ...deal,
+        adWeekId: doc.adWeekId,
+        sourceDocId: doc.id,
+        promoStart: deal.promoStart || null,
+        promoEnd: deal.promoEnd || null,
+      }));
+
+      if (dealRows.length > 0) {
+        await storage.createDealRows(dealRows);
+      }
+
+      res.json({
+        file: doc.filename,
+        reparsed: parseResult.parsedRows,
+        total: parseResult.totalRows,
+        errors: parseResult.errors,
+      });
+      
+    } catch (error) {
+      console.error("Error re-parsing document:", error);
+      res.status(500).json({ message: "Failed to re-parse document" });
+    }
+  });
+
+  // Download original document
+  app.get("/api/documents/:id/download", async (req, res) => {
+    try {
+      const doc = await storage.getSourceDoc(req.params.id);
+      
+      if (!doc) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      res.download(doc.storagePath, doc.filename);
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
   // Re-parse all documents for a week  
   app.post("/api/weeks/:id/reparse", async (req, res) => {
     try {
@@ -463,7 +532,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let result;
       if (type === 'pptx') {
-        result = await aiService.extractFromPPTX(text);
+        const deals = await aiService.extractDealsFromPDF(text); // Using same method for both PDF and PPTX
+        result = { items: deals, themes: [] };
       } else {
         const deals = await aiService.extractDealsFromPDF(text);
         result = { items: deals, themes: [] };

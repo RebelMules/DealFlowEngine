@@ -51,6 +51,38 @@ export default function InboxPage() {
     enabled: !!weekId,
   });
 
+  // Mutation for reprocessing a document
+  const reprocessDocumentMutation = useMutation({
+    mutationFn: async (docId: string) => {
+      const response = await fetch(`/api/documents/${docId}/reparse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to reprocess document');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Document Reprocessed",
+        description: `Successfully reprocessed ${data.file}. Parsed ${data.reparsed} of ${data.total} rows.`,
+      });
+      refetch(); // Refresh documents list
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Reprocess Failed",
+        description: error.message || "Failed to reprocess document",
+        variant: "destructive",
+      });
+    },
+  });
+
   const scoreAllDealsMutation = useMutation({
     mutationFn: async () => {
       try {
@@ -243,10 +275,8 @@ export default function InboxPage() {
                       size="sm"
                       title="Open Original"
                       onClick={() => {
-                        toast({
-                          title: "View Original",
-                          description: "Opening original file viewer coming soon.",
-                        });
+                        // Open the original file in a new tab
+                        window.open(`/api/documents/${doc.id}/download`, '_blank');
                       }}
                       data-testid={`open-original-${doc.id}`}
                     >
@@ -270,15 +300,11 @@ export default function InboxPage() {
                       variant="outline" 
                       size="sm"
                       title="Reprocess"
-                      onClick={() => {
-                        toast({
-                          title: "Reprocess File",
-                          description: "File reprocessing will parse the document again with current settings.",
-                        });
-                      }}
+                      onClick={() => reprocessDocumentMutation.mutate(doc.id)}
+                      disabled={reprocessDocumentMutation.isPending}
                       data-testid={`reprocess-${doc.id}`}
                     >
-                      <RefreshCw size={16} />
+                      <RefreshCw size={16} className={reprocessDocumentMutation.isPending ? "animate-spin" : ""} />
                     </Button>
                   </div>
                 </div>

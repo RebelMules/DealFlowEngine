@@ -29,6 +29,7 @@ export interface IStorage {
   getSourceDocsByWeek(adWeekId: string): Promise<SourceDoc[]>;
   getSourceDoc(id: string): Promise<SourceDoc | undefined>;
   createSourceDoc(sourceDoc: InsertSourceDoc): Promise<SourceDoc>;
+  updateSourceDoc(id: string, updates: Partial<InsertSourceDoc>): Promise<void>;
   
   // DealRow operations
   getDealRowsByWeek(adWeekId: string): Promise<DealRow[]>;
@@ -36,6 +37,7 @@ export interface IStorage {
   createDealRow(dealRow: InsertDealRow): Promise<DealRow>;
   createDealRows(dealRows: InsertDealRow[]): Promise<DealRow[]>;
   deleteDealRowsByWeek(adWeekId: string): Promise<void>;
+  deleteDealRowsByDocument(sourceDocId: string): Promise<void>;
   
   // Score operations
   getScoresByWeek(adWeekId: string): Promise<Score[]>;
@@ -94,6 +96,13 @@ export class DatabaseStorage implements IStorage {
     return sourceDoc;
   }
 
+  async updateSourceDoc(id: string, updates: Partial<InsertSourceDoc>): Promise<void> {
+    await db
+      .update(sourceDocs)
+      .set(updates)
+      .where(eq(sourceDocs.id, id));
+  }
+
   async getDealRowsByWeek(adWeekId: string): Promise<DealRow[]> {
     return await db
       .select()
@@ -127,6 +136,12 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(dealRows)
       .where(eq(dealRows.adWeekId, adWeekId));
+  }
+
+  async deleteDealRowsByDocument(sourceDocId: string): Promise<void> {
+    await db
+      .delete(dealRows)
+      .where(eq(dealRows.sourceDocId, sourceDocId));
   }
 
   async getScoresByWeek(adWeekId: string): Promise<Score[]> {
