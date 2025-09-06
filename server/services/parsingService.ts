@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import * as csv from 'csv-parse';
 import { createHash } from 'crypto';
+import { createReadStream } from 'fs';
 import path from 'path';
 import fs from 'fs/promises';
 import type { InsertDealRow } from '@shared/schema';
@@ -408,7 +409,7 @@ class ParsingService {
   generateFileHash(filePath: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const hash = createHash('sha256');
-      const stream = require('fs').createReadStream(filePath);
+      const stream = createReadStream(filePath);
       
       stream.on('data', (data: any) => hash.update(data));
       stream.on('end', () => resolve(hash.digest('hex')));
