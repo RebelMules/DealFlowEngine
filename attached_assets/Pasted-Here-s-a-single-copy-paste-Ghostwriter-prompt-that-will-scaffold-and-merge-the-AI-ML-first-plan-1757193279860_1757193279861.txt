@@ -1,0 +1,138 @@
+Here’s a single, **copy-paste Ghostwriter prompt** that will scaffold and merge the AI/ML-first plan from your canvas into your Repl. Paste it as **one message**, then let it run to completion.
+
+```
+Project: Vendor Deal Optimizer — AI/ML-First, Replit-proof
+
+GOAL
+Build a week-first app that ingests vendor deal files (CSV/XLSX/PDF/PPTX), canonicalizes them into DealRows, runs a deterministic scoring engine (6 components), explains “why,” and exports CSV/TXT/JSON — with AI/ML hooks that are OFF by default but can be enabled via secrets.
+
+RULES (very important)
+- Keep changes IDEMPOTENT and SAFE to re-run.
+- Use TypeScript everywhere. Use Drizzle ORM (no Prisma). Default DB = SQLite file.
+- If the repo already has Next.js, you may place API handlers under /app/api; otherwise use a tiny Node server (/server) with Express or Hono.
+- Do not introduce vendor lock-in; abstract AI providers behind a thin interface.
+- Never commit real secrets; create .env.example only.
+
+RUNTIME & SCRIPTS
+1) Add npm scripts:
+  "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
+  "dev:client": "vite",
+  "dev:server": "tsx server/index.ts",
+  "db:push": "drizzle-kit push",
+  "db:seed": "tsx server/seed.ts",
+  "build": "vite build",
+  "start": "node dist/server/index.cjs"
+
+2) Ensure /data exists (gitignored). Default DB is SQLite:
+  - Env: DB_DIALECT=sqlite
+  - Env: DATABASE_URL=file:./data/app.db
+
+3) Add /server/index.ts with a minimal HTTP server exposing:
+  - GET /health → { ok:true, db:"connected" }
+  - Mount API routes listed below.
+
+ENV & SECRETS (.env.example)
+# DB
+DB_DIALECT=sqlite
+DATABASE_URL=file:./data/app.db
+# AI (optional)
+AI_ENABLED=false
+AI_PROVIDER=anthropic   # or openai
+AI_MODEL=haiku-3.5      # or gpt-4o-mini
+AI_WEEKLY_BUDGET_USD=5
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-3-5-sonnet
+# Server
+APP_SECRET=change-me
+
+DRIZZLE SCHEMA (shared/schema.ts) — create if missing
+Create or extend these tables (sqlite-friendly types):
+- ad_weeks: id (pk), year int, week int, label text, start datetime, end datetime, status text, created_at
+- source_docs: id (pk), ad_week_id fk, kind text, vendor text?, filename text, mimetype text, byte_size int, storage_path text, hash text, page_count int?, meta json?, created_at
+- deal_rows: id (pk), ad_week_id fk, source_doc_id fk, item_code text, description text, dept text, cost real?, srp real?, ad_srp real?, vendor_funding_pct real?, mvmt real?, competitor_price real?, pack text?, size text?, promo_start datetime?, promo_end datetime?, source_ref json?, created_at
+- scores: id (pk), ad_week_id fk, item_code text, total real, components json, multipliers json, reasons json, refined_reason text?
+- export_history: id (pk), ad_week_id fk, created_by text, created_at, artifact_type text ('csv'|'txt'|'json'), artifact_hash text, meta json
+- ai_calls: id (pk), ad_week_id fk?, source_doc_id fk?, kind text ('extract'|'map'|'explain'), provider text, model text, prompt_hash text, tokens_in int default 0, tokens_out int default 0, cost_usd real default 0, status text default 'ok', created_at
+- ai_proposed_rows: id (pk), ad_week_id fk, source_doc_id fk, payload json, confidence real?, approved boolean default false, approved_by text?, created_at
+- outcomes: id (pk), ad_week_id fk, item_code text, units int?, sales_usd real?, realized_margin_pct real?, created_at
+
+Add drizzle-kit config and migrations; ensure "npm run db:push" applies idempotently.
+
+UPLOADS & ORIGINALS
+- Create POST /api/weeks/:id/uploads → accepts files, detects type, stores original at /uploads/{adWeekId}/{uuid}-{safeFilename}, computes hash, writes SourceDoc.
+- Create GET /api/uploads/:id/original → validate session; return signed URL (HMAC with APP_SECRET) with TTL 10 min; serve inline (Content-Disposition:inline). Never reveal raw filesystem path.
+
+PARSING & COLUMN MAPPER
+- CSV/XLSX: use xlsx/csv-parse. Keep UPC as TEXT (preserve leading zeros; 10–14 digits allowed).
+- Implement a Column-Mapper wizard for unknown layouts; save per-vendor template keyed by vendor + header hash; auto-apply when confidence ≥ 0.9; otherwise open mapper UI.
+- Add fixtures for:
+  * Ad Planner (fields: ORDER #, ITEM DESC, DEPT, UCOST, AD SRP, MVMT, GP%, REGSRP, SP/)
+  * Rolling Stock / Dept planners (reasonable variants)
+- Provide file-type heuristics and show per-file ingest status in UI.
+
+SCORING ENGINE (deterministic; ML OFF by default)
+- POST /api/weeks/:id/score → compute 6 components (margin, velocity, funding, theme, timing, competitive) with weights {.25,.25,.20,.15,.10,.05}; apply multipliers {newItem, seasonal, strategic, historical, privateLabel}; persist reasons[] (plain-language).
+- Quality gate: BLOCK if >5% of candidate rows missing cost OR ad_srp. Show banner with “Fix now” deep-links.
+- “Changed since last week” filter based on diff of item_code vs prior adWeek.
+
+AI LAYER (feature-flagged; deterministic fallback when disabled)
+Files:
+- server/config/ai.ts → export AI_ENABLED, AI_PROVIDER, AI_MODEL, AI_WEEKLY_BUDGET_USD
+- server/ai/types.ts → AIProvider interface { summarizeReasons, extractFromPdf, mapUnknownColumns }
+- server/ai/getProvider.ts → returns openaiProvider | anthropicProvider
+- server/ai/openai.ts & server/ai/anthropic.ts → temperature:0, small maxTokens; return { text, usage }
+- server/ai/redact.ts → redactText: remove emails/phones/addresses
+Endpoints (return 400 if AI_ENABLED=false):
+- POST /api/ai/explain { dealRowId } → load reasons+item; redact; provider.summarizeReasons(); log ai_calls (tokens/cost)
+- POST /api/ai/extract { uploadId, vendor? } → fetch text-only for SourceDoc; redact; provider.extractFromPdf(); persist ai_proposed_rows; return proposed rows + confidence
+Budget Guard:
+- Weekly cap via AI_WEEKLY_BUDGET_USD; sum(ai_calls.cost_usd) per week; return 429 if exceeded with a message.
+
+RAG (stub, optional today)
+- Create server/ai/context.ts with a stub that returns glossary snippets from a simple file-backed store; later switch to pgvector when DB_DIALECT=postgres.
+
+UI (Desktop Mode)
+- Pages: /weeks, /inbox, /deals, /exports, /calendar
+- Global guided stepper visible on all week pages: Ingest → Map → Validate → Score → Review → Export with readiness %.
+- Right drawer on /deals with reasons chips and “Open original”.
+- Weights Drawer (week-scoped) with default weights; “Score All Deals” + “Re-score” actions.
+- AI toggles appear only if AI_ENABLED:
+  * Inbox row: “AI Assist parsing” (opens grid to approve/reject ai_proposed_rows)
+  * Deals row: “Refine explanation”
+  * PPTX panel: “Extract candidates”
+- Exports page: download CSV/TXT/JSON; show ExportHistory (who/when/hash/meta) with back-links to AdWeek and SourceDocs.
+
+EXPORTS (contracts)
+- CSV weekly-deal-bank.csv → includes item_code, description, dept, ad price, pricing pattern, score, sourceFile, sourceRef
+- buyer-report.txt → grouped by dept, includes hero flags/notes
+- designer.json → item, price copy, pattern, hero flag, dept, rank, notes
+- After each export, insert ExportHistory with artifactHash + meta (counts/filters).
+
+OUTCOMES & ML HOOKS (off by default)
+- outcomes table for units/sales/margin.
+- server/ml/featureView.ts → join DealRow + historical stats into feature vectors.
+- server/ml/learningBoost.ts → stub returns 0; add ML_ENABLED flag. If enabled: finalScore = 0.8*rules + 0.2*learningBoost; show “Learning boost +x.x” chip.
+
+TESTS & SEEDS
+- Seed script inserts: one AdWeek (“Practice Week”), a few SourceDocs, ~10 DealRows with varied data.
+- Tests:
+  * Column-Mapper template reuse (same file hash → auto-map).
+  * Exporters write ExportHistory with correct hash/meta.
+  * AI endpoints: disabled → 400; enabled w/o key → deterministic fallback; with key (if present) → logs ai_calls.
+
+FIRST RUN (must succeed on a fresh Repl without keys)
+1) npm run db:push
+2) npm run db:seed
+3) npm run dev
+4) Open app: Weeks → Inbox (upload fixture) → Deals (Score All Deals) → Exports (download files)
+
+ACCEPTANCE
+- App boots in Replit with SQLite and no keys; all pages render.
+- Scoring runs; quality gate enforced; reasons visible; “Open original” streams inline via signed URL.
+- Exports include source refs; ExportHistory shows correct entries.
+- If AI_ENABLED=true and a key is set: explain/extract endpoints work and log ai_calls; if disabled: clean 400 responses.
+```
+
+If you want, I can also give you a shorter **“strict code-diff”** prompt that forces file-by-file creation (helpful if Ghostwriter is being stubborn).
