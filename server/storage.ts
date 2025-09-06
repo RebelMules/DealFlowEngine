@@ -35,6 +35,7 @@ export interface IStorage {
   getDealRow(id: string): Promise<DealRow | undefined>;
   createDealRow(dealRow: InsertDealRow): Promise<DealRow>;
   createDealRows(dealRows: InsertDealRow[]): Promise<DealRow[]>;
+  deleteDealRowsByWeek(adWeekId: string): Promise<void>;
   
   // Score operations
   getScoresByWeek(adWeekId: string): Promise<Score[]>;
@@ -120,6 +121,12 @@ export class DatabaseStorage implements IStorage {
       .values(insertDealRows)
       .returning();
     return createdRows;
+  }
+
+  async deleteDealRowsByWeek(adWeekId: string): Promise<void> {
+    await db
+      .delete(dealRows)
+      .where(eq(dealRows.adWeekId, adWeekId));
   }
 
   async getScoresByWeek(adWeekId: string): Promise<Score[]> {

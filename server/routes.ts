@@ -200,6 +200,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Re-parse all documents for a week  
+  app.post("/api/weeks/:id/reparse", async (req, res) => {
+    try {
+      const adWeekId = req.params.id;
+      const documents = await storage.getSourceDocsByWeek(adWeekId);
+      
+      if (documents.length === 0) {
+        return res.status(404).json({ message: "No documents found for this week" });
+      }
+
+      // Delete existing deals for this week
+      await storage.deleteDealRowsByWeek(adWeekId);
+      
+      const results = [];
+      
+      for (const doc of documents) {
+        try {
+          // Re-parse the document
+          const parseResult = await parsingService.parseFile(doc.storagePath, doc.filename, doc.mimetype);
+          
+          // Create new deal rows
+          const dealRows = parseResult.deals.map(deal => ({
+            ...deal,
+            adWeekId,
+            sourceDocId: doc.id,
+            promoStart: deal.promoStart || null,
+            promoEnd: deal.promoEnd || null,
+          }));
+
+          if (dealRows.length > 0) {
+            await storage.createDealRows(dealRows);
+          }
+
+          results.push({
+            file: doc.filename,
+            reparsed: parseResult.parsedRows,
+            total: parseResult.totalRows,
+            errors: parseResult.errors,
+          });
+          
+        } catch (error) {
+          console.error(`Error re-parsing ${doc.filename}:`, error);
+          results.push({
+            file: doc.filename,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+      
+      res.json({ results });
+    } catch (error) {
+      console.error("Error re-parsing documents:", error);
+      res.status(500).json({ message: "Failed to re-parse documents" });
+    }
+  });
+
+  // Debug endpoint to check parsed data
+  app.get("/api/weeks/:id/debug", async (req, res) => {
+    try {
+      const deals = await storage.getDealRowsByWeek(req.params.id);
+      
+      if (deals.length > 0) {
+        const summary = {
+          totalDeals: deals.length,
+          missingCost: deals.filter(d => !d.cost).length,
+          missingAdSrp: deals.filter(d => !d.adSrp).length,
+          missingSrp: deals.filter(d => !d.srp).length,
+          sampleDeal: {
+            itemCode: deals[0].itemCode,
+            description: deals[0].description,
+            cost: deals[0].cost,
+            srp: deals[0].srp,
+            adSrp: deals[0].adSrp,
+            dept: deals[0].dept,
+          },
+          costValues: deals.slice(0, 5).map(d => ({ itemCode: d.itemCode, cost: d.cost })),
+          adSrpValues: deals.slice(0, 5).map(d => ({ itemCode: d.itemCode, adSrp: d.adSrp })),
+        };
+        res.json(summary);
+      } else {
+        res.json({ message: "No deals found" });
+      }
+    } catch (error) {
+      console.error("Error in debug endpoint:", error);
+      res.status(500).json({ message: "Failed to get debug info" });
+    }
+  });
+
   // Score all deals for a week
   app.post("/api/weeks/:id/score", async (req, res) => {
     try {

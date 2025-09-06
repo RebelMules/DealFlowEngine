@@ -34,6 +34,9 @@ interface ParsingResult {
 }
 
 class ParsingService {
+  private hasLoggedColumns = false;
+  private hasLoggedPriceData = false;
+  
   async parseFile(filePath: string, filename: string, mimeType: string): Promise<ParsingResult> {
     try {
       if (mimeType.includes('spreadsheet') || filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
@@ -461,8 +464,25 @@ class ParsingService {
   }
 
   private mapGenericRowToDeal(row: any): ParsedDeal {
+    // Log the first row to see what columns we have
+    if (!this.hasLoggedColumns) {
+      console.log('CSV columns found:', Object.keys(row));
+      this.hasLoggedColumns = true;
+    }
+    
     // Generic mapping - tries common column name variations (case-insensitive)
     const findColumn = (variations: string[]): any => {
+      // First try exact matches (case-insensitive)
+      for (const key of Object.keys(row)) {
+        const keyUpper = key.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Remove spaces/special chars
+        for (const variation of variations) {
+          const varUpper = variation.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (keyUpper === varUpper) {
+            return row[key];
+          }
+        }
+      }
+      // Then try partial matches
       for (const key of Object.keys(row)) {
         const keyUpper = key.toUpperCase();
         for (const variation of variations) {
@@ -482,18 +502,37 @@ class ParsingService {
       throw new Error('Missing required fields');
     }
     
-    // More aggressive search for cost and price fields
-    const cost = this.parseNumber(
-      findColumn(['COST', 'NET COST', 'UCOST', 'UNIT COST', 'CASE COST', 'WHOLESALE'])
-    );
+    // More aggressive search for cost and price fields - expanded variations
+    const costRaw = findColumn([
+      'COST', 'NET COST', 'UCOST', 'UNIT COST', 'CASE COST', 'WHOLESALE',
+      'NETCOST', 'NET_COST', 'UNITCOST', 'UNIT_COST', 'CASECOST', 'CASE_COST',
+      'WHOLESALECOST', 'WHOLESALE_COST', 'BASECOST', 'BASE_COST', 'BASE COST',
+      'ITEMCOST', 'ITEM_COST', 'ITEM COST', 'PRODUCTCOST', 'PRODUCT_COST', 'PRODUCT COST'
+    ]);
     
-    const srp = this.parseNumber(
-      findColumn(['SRP', 'REGSRP', 'REGULAR PRICE', 'RETAIL', 'RETAIL PRICE', 'REG PRICE'])
-    );
+    const srpRaw = findColumn([
+      'SRP', 'REGSRP', 'REGULAR PRICE', 'RETAIL', 'RETAIL PRICE', 'REG PRICE',
+      'REGULARPRICE', 'REGULAR_PRICE', 'RETAILPRICE', 'RETAIL_PRICE', 'REGPRICE', 'REG_PRICE',
+      'MSRP', 'LIST PRICE', 'LISTPRICE', 'LIST_PRICE', 'NORMAL PRICE', 'NORMALPRICE'
+    ]);
     
-    const adSrp = this.parseNumber(
-      findColumn(['AD PRICE', 'AD SRP', 'SALE PRICE', 'PROMO PRICE', 'SPECIAL', 'AD'])
-    );
+    const adSrpRaw = findColumn([
+      'AD PRICE', 'AD SRP', 'SALE PRICE', 'PROMO PRICE', 'SPECIAL', 'AD',
+      'ADPRICE', 'AD_PRICE', 'ADSRP', 'AD_SRP', 'SALEPRICE', 'SALE_PRICE',
+      'PROMOPRICE', 'PROMO_PRICE', 'SPECIALPRICE', 'SPECIAL_PRICE', 'SPECIAL PRICE',
+      'PROMOTIONAL', 'PROMOTIONAL PRICE', 'PROMOTIONALPRICE', 'PROMOTIONAL_PRICE',
+      'DISCOUNT PRICE', 'DISCOUNTPRICE', 'DISCOUNT_PRICE', 'OFFER PRICE', 'OFFERPRICE', 'OFFER_PRICE'
+    ]);
+    
+    // Debug logging for first few rows
+    if (!this.hasLoggedPriceData && (costRaw || srpRaw || adSrpRaw)) {
+      console.log('Price data found - Cost:', costRaw, 'SRP:', srpRaw, 'Ad Price:', adSrpRaw);
+      this.hasLoggedPriceData = true;
+    }
+    
+    const cost = this.parseNumber(costRaw);
+    const srp = this.parseNumber(srpRaw);
+    const adSrp = this.parseNumber(adSrpRaw);
     
     return {
       itemCode: String(itemCode).trim(),
