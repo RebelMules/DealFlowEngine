@@ -24,6 +24,7 @@ export interface IStorage {
   getAdWeek(id: string): Promise<AdWeek | undefined>;
   createAdWeek(adWeek: InsertAdWeek): Promise<AdWeek>;
   updateAdWeekStatus(id: string, status: string): Promise<void>;
+  deleteAdWeek(id: string): Promise<void>;
   
   // SourceDoc operations
   getSourceDocsByWeek(adWeekId: string): Promise<SourceDoc[]>;
@@ -187,6 +188,26 @@ export class DatabaseStorage implements IStorage {
       .values(insertExportHistory)
       .returning();
     return exportHist;
+  }
+
+  async deleteAdWeek(id: string): Promise<void> {
+    // Delete in order: scores, dealRows, sourceDocs, exportHistory, then adWeek
+    // This ensures referential integrity is maintained
+    
+    // Delete all scores for this week
+    await db.delete(scores).where(eq(scores.adWeekId, id));
+    
+    // Delete all deal rows for this week
+    await db.delete(dealRows).where(eq(dealRows.adWeekId, id));
+    
+    // Delete all source documents for this week
+    await db.delete(sourceDocs).where(eq(sourceDocs.adWeekId, id));
+    
+    // Delete all export history for this week
+    await db.delete(exportHistory).where(eq(exportHistory.adWeekId, id));
+    
+    // Finally delete the week itself
+    await db.delete(adWeeks).where(eq(adWeeks.id, id));
   }
 }
 
