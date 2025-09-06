@@ -272,22 +272,12 @@ class ExportService {
         heroDeals: heroCount,
         averageScore: avgScore.toFixed(1),
         averageMargin: avgMargin.toFixed(1),
-        targetMix: this.getTargetMix(dept),
       };
     }
     
     return summary;
   }
 
-  private getTargetMix(dept: string): string {
-    const targets: Record<string, string> = {
-      'Meat': '25-30%',
-      'Grocery': '30-35%',
-      'Produce': '20-25%',
-      'Bakery': '15-20%',
-    };
-    return targets[dept] || '10-15%';
-  }
 
   async deleteFile(filePath: string): Promise<void> {
     try {
