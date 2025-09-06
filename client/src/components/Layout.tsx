@@ -11,8 +11,21 @@ import {
   Settings as SettingsIcon,
   Plus,
   Menu,
-  X
+  X,
+  Trash2
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { useKeyboard } from "@/hooks/useKeyboard";
 import { useWeeks } from "@/hooks/useWeeks";
 import { useToast } from "@/hooks/use-toast";
@@ -26,13 +39,45 @@ export function Layout({ children }: LayoutProps) {
   const [location, navigate] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { data: weeks } = useWeeks();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const currentWeek = weeks?.[0]; // Most recent week
 
   const handleSettings = () => {
     setSettingsOpen(true);
+  };
+
+  const deleteWeekMutation = useMutation({
+    mutationFn: async (weekId: string) => {
+      const response = await apiRequest('DELETE', `/api/weeks/${weekId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Week deleted",
+        description: "The week and all associated data have been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/weeks'] });
+      navigate('/weeks');
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete the week. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Error deleting week:', error);
+    },
+  });
+
+  const handleDeleteWeek = () => {
+    if (currentWeek) {
+      deleteWeekMutation.mutate(currentWeek.id);
+      setDeleteDialogOpen(false);
+    }
   };
   
   // Keyboard shortcuts
@@ -170,6 +215,17 @@ export function Layout({ children }: LayoutProps) {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              {currentWeek && (
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={() => setDeleteDialogOpen(true)}
+                  data-testid="delete-week-button"
+                >
+                  <Trash2 size={14} className="mr-1" />
+                  Delete Week
+                </Button>
+              )}
               <Button 
                 variant="secondary" 
                 size="sm" 
@@ -199,6 +255,37 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Settings Dialog */}
       <Settings open={settingsOpen} onOpenChange={setSettingsOpen} />
+
+      {/* Delete Week Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Week {currentWeek?.week}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will permanently delete this week and all associated data including:
+              <ul className="list-disc list-inside mt-2 text-sm">
+                <li>All uploaded documents</li>
+                <li>All parsed deals</li>
+                <li>All calculated scores</li>
+                <li>All export history</li>
+              </ul>
+              <span className="font-semibold text-destructive mt-2 inline-block">
+                This action cannot be undone.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteWeek}
+              disabled={deleteWeekMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteWeekMutation.isPending ? "Deleting..." : "Delete Week"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
