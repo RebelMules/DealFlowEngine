@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { useKeyboard } from "@/hooks/useKeyboard";
 import { useWeeks } from "@/hooks/useWeeks";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { InsertAdWeek } from "@shared/schema";
 
 interface LayoutProps {
   children: ReactNode;
@@ -25,8 +29,92 @@ export function Layout({ children }: LayoutProps) {
   const [location, navigate] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { data: weeks } = useWeeks();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const currentWeek = weeks?.[0]; // Most recent week
+
+  const createWeekMutation = useMutation({
+    mutationFn: async (weekData: InsertAdWeek) => {
+      const response = await apiRequest('POST', '/api/weeks', weekData);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/weeks'] });
+      toast({
+        title: "Week Created",
+        description: "New ad week has been created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to create new week",
+        variant: "destructive",
+      });
+      console.error('Error creating week:', error);
+    },
+  });
+
+  // Helper function to calculate next week's data
+  const generateNextWeek = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    
+    // Calculate ISO week number
+    const getISOWeek = (date: Date) => {
+      const target = new Date(date.valueOf());
+      const dayNumber = (date.getDay() + 6) % 7;
+      target.setDate(target.getDate() - dayNumber + 3);
+      const firstThursday = target.valueOf();
+      target.setMonth(0, 1);
+      if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+      }
+      return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+    };
+
+    const currentWeek = getISOWeek(now);
+    const nextWeek = currentWeek + 1;
+
+    // Calculate start and end dates for the next week
+    const getDateOfISOWeek = (year: number, week: number) => {
+      const simple = new Date(year, 0, 1 + (week - 1) * 7);
+      const dow = simple.getDay();
+      const ISOweekStart = simple;
+      if (dow <= 4) {
+        ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+      } else {
+        ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+      }
+      return ISOweekStart;
+    };
+
+    const weekStart = getDateOfISOWeek(year, nextWeek);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    return {
+      year,
+      week: nextWeek,
+      label: `${year}-W${nextWeek.toString().padStart(2, '0')}`,
+      start: weekStart,
+      end: weekEnd,
+      status: "Inbox" as const,
+    };
+  };
+
+  const handleCreateWeek = () => {
+    const nextWeekData = generateNextWeek();
+    createWeekMutation.mutate(nextWeekData);
+  };
+
+  const handleSettings = () => {
+    toast({
+      title: "Settings",
+      description: "Settings panel coming soon...",
+    });
+  };
   
   // Keyboard shortcuts
   useKeyboard({
@@ -179,13 +267,23 @@ export function Layout({ children }: LayoutProps) {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <Button variant="secondary" size="sm" data-testid="settings-button">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleSettings}
+                data-testid="settings-button"
+              >
                 <Settings size={16} className="mr-2" />
                 Settings
               </Button>
-              <Button size="sm" data-testid="new-week-button">
+              <Button 
+                size="sm" 
+                onClick={handleCreateWeek}
+                disabled={createWeekMutation.isPending}
+                data-testid="new-week-button"
+              >
                 <Plus size={16} className="mr-2" />
-                New Week
+                {createWeekMutation.isPending ? "Creating..." : "New Week"}
               </Button>
             </div>
           </div>
