@@ -229,6 +229,12 @@ export default function InboxPage() {
                       variant="outline" 
                       size="sm"
                       title="Open Original"
+                      onClick={() => {
+                        toast({
+                          title: "View Original",
+                          description: "Opening original file viewer coming soon.",
+                        });
+                      }}
                       data-testid={`open-original-${doc.id}`}
                     >
                       <ExternalLink size={16} />
@@ -237,6 +243,12 @@ export default function InboxPage() {
                       variant="outline" 
                       size="sm"
                       title="Map Columns"
+                      onClick={() => {
+                        toast({
+                          title: "Column Mapping",
+                          description: "Column mapping configuration coming soon. The system automatically detects standard columns for now.",
+                        });
+                      }}
                       data-testid={`map-columns-${doc.id}`}
                     >
                       <Settings size={16} />
@@ -245,6 +257,12 @@ export default function InboxPage() {
                       variant="outline" 
                       size="sm"
                       title="Reprocess"
+                      onClick={() => {
+                        toast({
+                          title: "Reprocess File",
+                          description: "File reprocessing will parse the document again with current settings.",
+                        });
+                      }}
                       data-testid={`reprocess-${doc.id}`}
                     >
                       <RefreshCw size={16} />
