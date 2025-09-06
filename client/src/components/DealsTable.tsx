@@ -2,12 +2,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Eye, 
   ExternalLink, 
-  Lock,
-  ChevronLeft,
-  ChevronRight
+  Lock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,17 +38,10 @@ interface DealsTableProps {
 
 export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTableProps) {
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
-  const [currentPage, setCurrentPage] = useState(1);
-  const dealsPerPage = 20;
-
-  const totalPages = Math.ceil(deals.length / dealsPerPage);
-  const startIndex = (currentPage - 1) * dealsPerPage;
-  const endIndex = startIndex + dealsPerPage;
-  const currentDeals = deals.slice(startIndex, endIndex);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedDeals(new Set(currentDeals.map(d => d.id)));
+      setSelectedDeals(new Set(deals.map(d => d.id)));
     } else {
       setSelectedDeals(new Set());
     }
@@ -90,14 +82,14 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
   };
 
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-card rounded-lg border border-border overflow-hidden h-full flex flex-col">
+      <div className="flex-1 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-muted">
+          <thead className="bg-muted sticky top-0 z-10">
             <tr>
               <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">
                 <Checkbox
-                  checked={selectedDeals.size === currentDeals.length && currentDeals.length > 0}
+                  checked={selectedDeals.size === deals.length && deals.length > 0}
                   onCheckedChange={handleSelectAll}
                   data-testid="select-all-checkbox"
                 />
@@ -112,8 +104,11 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
               <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {currentDeals.map((deal) => {
+        </table>
+        <ScrollArea className="h-[calc(100vh-350px)]">
+          <table className="w-full">
+            <tbody className="divide-y divide-border">
+              {deals.map((deal) => {
               const interpretation = deal.score ? getScoreInterpretation(deal.score.total) : null;
               
               return (
@@ -210,19 +205,20 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
                   </td>
                 </tr>
               );
-            })}
-          </tbody>
-        </table>
+              })}
+            </tbody>
+          </table>
+        </ScrollArea>
       </div>
 
-      {/* Pagination */}
-      <div className="mt-4 flex items-center justify-between p-4 border-t border-border">
+      {/* Status Bar */}
+      <div className="flex items-center justify-between p-4 border-t border-border">
         <div className="text-sm text-muted-foreground">
-          Showing {startIndex + 1} to {Math.min(endIndex, deals.length)} of {deals.length} deals
+          Total: {deals.length} deals
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
+        <div className="text-sm text-muted-foreground">
+          {selectedDeals.size > 0 && `${selectedDeals.size} selected`}
+        </div>
             size="sm"
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
