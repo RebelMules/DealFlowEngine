@@ -13,13 +13,24 @@ import {
   ExternalLink, 
   Settings,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { SourceDoc } from "@shared/schema";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 // Extended type for documents with parsing info stored in meta field
 interface DocumentWithMeta extends SourceDoc {
@@ -44,6 +55,8 @@ const stepperSteps = [
 export default function InboxPage() {
   const { id: weekId } = useParams<{ id: string }>();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<{ id: string; name: string } | null>(null);
   const [columnMappingModal, setColumnMappingModal] = useState<{
     isOpen: boolean;
     documentId: string;
@@ -88,6 +101,39 @@ export default function InboxPage() {
       });
     },
   });
+
+  // Delete document mutation
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (docId: string) => {
+      const response = await apiRequest('DELETE', `/api/documents/${docId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Document deleted",
+        description: "The document and all associated data have been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/weeks', weekId, 'documents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/weeks', weekId, 'deals'] });
+      refetch(); // Refresh documents list
+      setDeleteDialogOpen(false);
+      setDocumentToDelete(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete the document. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Error deleting document:', error);
+    },
+  });
+
+  const handleDeleteDocument = () => {
+    if (documentToDelete) {
+      deleteDocumentMutation.mutate(documentToDelete.id);
+    }
+  };
 
   const scoreAllDealsMutation = useMutation({
     mutationFn: async () => {
@@ -314,6 +360,18 @@ export default function InboxPage() {
                     >
                       <RefreshCw size={14} className={reprocessDocumentMutation.isPending ? "animate-spin" : ""} />
                     </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      title="Delete"
+                      onClick={() => {
+                        setDocumentToDelete({ id: doc.id, name: doc.filename });
+                        setDeleteDialogOpen(true);
+                      }}
+                      data-testid={`delete-${doc.id}`}
+                    >
+                      <Trash2 size={14} />
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -346,6 +404,39 @@ export default function InboxPage() {
         documentId={columnMappingModal.documentId}
         documentName={columnMappingModal.documentName}
       />
+
+      {/* Delete Document Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{documentToDelete?.name}"?
+              <br /><br />
+              This will permanently remove:
+              <ul className="list-disc list-inside mt-2 text-sm">
+                <li>The uploaded file</li>
+                <li>All parsed deal rows from this document</li>
+                <li>All calculated scores for these deals</li>
+              </ul>
+              <br />
+              <span className="font-semibold text-destructive">
+                This action cannot be undone.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDocumentToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteDocument}
+              disabled={deleteDocumentMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteDocumentMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
