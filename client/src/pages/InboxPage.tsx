@@ -124,7 +124,7 @@ export default function InboxPage() {
   const totalParsedRows = documents.reduce((sum, doc) => sum + (doc.meta?.parsedRows || 0), 0);
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col overflow-hidden">
       {/* Progress Stepper */}
       <ProgressStepper 
         steps={stepperSteps}
