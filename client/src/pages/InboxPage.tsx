@@ -171,15 +171,15 @@ export default function InboxPage() {
       />
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3">
         {/* Quality Gate Banner */}
-        <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+        <div className="mb-3 p-3 bg-primary/10 border border-primary/20 rounded-lg">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <AlertTriangle className="text-primary" size={20} />
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="text-primary" size={16} />
               <div>
-                <h3 className="font-medium text-card-foreground">Quality Gate: Ready to Score</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="text-sm font-medium text-card-foreground">Quality Gate: Ready to Score</h3>
+                <p className="text-xs text-muted-foreground">
                   All validation checks passed. {totalParsedRows} deals ready for scoring.
                 </p>
               </div>
@@ -187,21 +187,22 @@ export default function InboxPage() {
             <Button 
               onClick={handleScoreAllDeals}
               disabled={scoreAllDealsMutation.isPending}
+              size="sm"
               className="bg-primary text-primary-foreground hover:bg-primary/90" 
               data-testid="score-all-deals"
             >
-              <FileText size={16} className="mr-2" />
-              {scoreAllDealsMutation.isPending ? "Scoring..." : "Score All Deals"}
+              <FileText size={14} className="mr-1" />
+              {scoreAllDealsMutation.isPending ? "Scoring..." : "Score All"}
             </Button>
           </div>
         </div>
 
         {/* Upload Area */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-card-foreground">Source Documents</h2>
-            <Button onClick={() => setUploadModalOpen(true)} data-testid="upload-files-button">
-              <Upload size={16} className="mr-2" />
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-card-foreground">Source Documents</h2>
+            <Button size="sm" onClick={() => setUploadModalOpen(true)} data-testid="upload-files-button">
+              <Upload size={14} className="mr-1" />
               Upload Files
             </Button>
           </div>
@@ -221,20 +222,20 @@ export default function InboxPage() {
 
         {/* Documents List */}
         {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <RefreshCw className="animate-spin text-muted-foreground" size={24} />
-            <span className="ml-2 text-muted-foreground">Loading documents...</span>
+          <div className="flex items-center justify-center h-24">
+            <RefreshCw className="animate-spin text-muted-foreground" size={20} />
+            <span className="ml-2 text-sm text-muted-foreground">Loading documents...</span>
           </div>
         ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {documents.map((doc) => (
             <Card key={doc.id} className="hover:bg-accent hover:bg-opacity-30 transition-colors">
-              <CardContent className="p-6">
+              <CardContent className="p-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <FileText size={20} className="text-muted-foreground" />
-                      <h3 className="font-medium text-card-foreground">{doc.filename}</h3>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <FileText size={16} className="text-muted-foreground" />
+                      <h3 className="text-sm font-medium text-card-foreground">{doc.filename}</h3>
                       {doc.meta?.status && (
                         <Badge className={cn("text-xs", getStatusColor(doc.meta.status))}>
                           {doc.meta.status.replace('_', ' ').toUpperCase()}
@@ -242,15 +243,15 @@ export default function InboxPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center space-x-6 text-sm text-muted-foreground mb-3">
+                    <div className="flex items-center space-x-4 text-xs text-muted-foreground mb-2">
                       <span>Type: {doc.meta?.detectedType || doc.kind}</span>
                       <span>Size: {formatFileSize(doc.byteSize)}</span>
                       {doc.vendor && <span>Vendor: {doc.vendor}</span>}
                     </div>
 
                     {doc.meta?.status === 'parsed' && doc.meta?.totalRows && doc.meta.totalRows > 0 && (
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between text-sm mb-1">
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between text-xs mb-1">
                           <span className="text-card-foreground">Parsing Progress</span>
                           <span className="text-muted-foreground">
                             {doc.meta.parsedRows} / {doc.meta.totalRows} rows
@@ -258,14 +259,14 @@ export default function InboxPage() {
                         </div>
                         <Progress 
                           value={(doc.meta.parsedRows! / doc.meta.totalRows) * 100} 
-                          className="h-2"
+                          className="h-1"
                         />
                       </div>
                     )}
 
                     {doc.meta?.errors && doc.meta.errors.length > 0 && (
-                      <div className="mb-3">
-                        <p className="text-xs text-yellow-400 mb-1">Warnings:</p>
+                      <div className="mb-2">
+                        <p className="text-xs text-yellow-400">Warnings:</p>
                         <ul className="list-disc list-inside text-xs text-muted-foreground">
                           {doc.meta.errors.map((error: string, index: number) => (
                             <li key={index}>{error}</li>
@@ -275,7 +276,7 @@ export default function InboxPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-2 ml-4">
+                  <div className="flex items-center space-x-1 ml-2">
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -286,7 +287,7 @@ export default function InboxPage() {
                       }}
                       data-testid={`open-original-${doc.id}`}
                     >
-                      <ExternalLink size={16} />
+                      <ExternalLink size={14} />
                     </Button>
                     <Button 
                       variant="outline" 
@@ -301,7 +302,7 @@ export default function InboxPage() {
                       }}
                       data-testid={`map-columns-${doc.id}`}
                     >
-                      <Settings size={16} />
+                      <Settings size={14} />
                     </Button>
                     <Button 
                       variant="outline" 
@@ -311,7 +312,7 @@ export default function InboxPage() {
                       disabled={reprocessDocumentMutation.isPending}
                       data-testid={`reprocess-${doc.id}`}
                     >
-                      <RefreshCw size={16} className={reprocessDocumentMutation.isPending ? "animate-spin" : ""} />
+                      <RefreshCw size={14} className={reprocessDocumentMutation.isPending ? "animate-spin" : ""} />
                     </Button>
                   </div>
                 </div>
@@ -322,16 +323,16 @@ export default function InboxPage() {
         )}
 
         {!isLoading && documents.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-64 bg-muted/20 rounded-lg border-2 border-dashed border-muted">
-            <Upload size={48} className="text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-card-foreground mb-2">
+          <div className="flex flex-col items-center justify-center h-32 bg-muted/20 rounded-lg border-2 border-dashed border-muted">
+            <Upload size={32} className="text-muted-foreground mb-2" />
+            <h3 className="text-sm font-semibold text-card-foreground mb-1">
               No documents uploaded
             </h3>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-xs text-muted-foreground mb-2">
               Upload CSV, XLSX, PDF, or PPTX files to start processing deals
             </p>
-            <Button onClick={() => setUploadModalOpen(true)} data-testid="upload-first-files">
-              <Upload size={16} className="mr-2" />
+            <Button size="sm" onClick={() => setUploadModalOpen(true)} data-testid="upload-first-files">
+              <Upload size={14} className="mr-1" />
               Upload Files
             </Button>
           </div>

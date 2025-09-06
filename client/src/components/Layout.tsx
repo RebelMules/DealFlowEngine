@@ -89,13 +89,13 @@ export function Layout({ children }: LayoutProps) {
         sidebarOpen ? "w-64" : "w-16"
       )}>
         {/* Header */}
-        <div className="p-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <ChartLine className="text-primary-foreground" size={16} />
+        <div className="p-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+              <ChartLine className="text-primary-foreground" size={14} />
             </div>
             {sidebarOpen && (
-              <h1 className="text-lg font-semibold text-sidebar-foreground">
+              <h1 className="text-base font-semibold text-sidebar-foreground">
                 Deal Optimizer
               </h1>
             )}
@@ -103,7 +103,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
         
         {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-3 space-y-1">
           {navigationItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -111,28 +111,28 @@ export function Layout({ children }: LayoutProps) {
                 key={item.key}
                 href={item.href}
                 className={cn(
-                  "flex items-center space-x-3 px-3 py-2 rounded-md transition-colors",
+                  "flex items-center space-x-2 px-2 py-1.5 rounded-md transition-colors",
                   "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   item.active && "bg-sidebar-accent text-sidebar-accent-foreground",
                   item.disabled && "opacity-50 cursor-not-allowed"
                 )}
                 data-testid={`nav-${item.key}`}
               >
-                <Icon size={16} />
-                {sidebarOpen && <span className="font-medium">{item.label}</span>}
+                <Icon size={14} />
+                {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
               </Link>
             );
           })}
         </nav>
         
         {/* Footer */}
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-3 border-t border-sidebar-border">
           {sidebarOpen ? (
             <>
               <div className="text-xs text-muted-foreground">
                 Week {currentWeek?.week} • {currentWeek?.year}
               </div>
-              <div className="text-sm font-medium text-sidebar-foreground">
+              <div className="text-xs font-medium text-sidebar-foreground">
                 {currentWeek?.label}
               </div>
             </>
@@ -147,36 +147,36 @@ export function Layout({ children }: LayoutProps) {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="bg-card border-b border-border px-6 py-4">
+        <header className="bg-card border-b border-border px-4 py-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 data-testid="sidebar-toggle"
               >
-                <Menu size={16} />
+                <Menu size={14} />
               </Button>
               <div>
-                <h2 className="text-xl font-semibold text-card-foreground">
+                <h2 className="text-lg font-semibold text-card-foreground">
                   {currentWeek ? `Weekly Deal Bank - Week ${currentWeek.week}` : 'Deal Optimizer'}
                 </h2>
                 {currentWeek && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {new Date(currentWeek.start).toLocaleDateString()} - {new Date(currentWeek.end).toLocaleDateString()}
                   </p>
                 )}
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
               <Button 
                 variant="secondary" 
                 size="sm" 
                 onClick={handleSettings}
                 data-testid="settings-button"
               >
-                <SettingsIcon size={16} className="mr-2" />
+                <SettingsIcon size={14} className="mr-1" />
                 Settings
               </Button>
               <Button 
@@ -184,7 +184,7 @@ export function Layout({ children }: LayoutProps) {
                 onClick={() => navigate('/weeks')}
                 data-testid="new-week-button"
               >
-                <Plus size={16} className="mr-2" />
+                <Plus size={14} className="mr-1" />
                 Add Week
               </Button>
             </div>
