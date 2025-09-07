@@ -32,6 +32,7 @@ export function Settings({ open, onOpenChange }: SettingsProps) {
   // AI is automatically enabled when API keys are present
   const [aiEnabled, setAiEnabled] = useState(true); // Always on when keys are present
   const [autoApplyAI, setAutoApplyAI] = useState(true);
+  const [compactView, setCompactView] = useState(true); // Default to compact view ON
   const [scoringWeights, setScoringWeights] = useState({
     margin: 30,
     velocity: 25,
@@ -49,9 +50,20 @@ export function Settings({ open, onOpenChange }: SettingsProps) {
       const settings = JSON.parse(savedSettings);
       setAiEnabled(settings.aiEnabled ?? true);
       setAutoApplyAI(settings.autoApplyAI ?? true);
+      setCompactView(settings.compactView ?? true); // Default to true if not saved
       if (settings.scoringWeights) {
         setScoringWeights(settings.scoringWeights);
       }
+      
+      // Apply compact view immediately on load
+      if (settings.compactView !== false) {
+        document.documentElement.classList.add('compact-view');
+      } else {
+        document.documentElement.classList.remove('compact-view');
+      }
+    } else {
+      // Default compact view to true when no settings exist
+      document.documentElement.classList.add('compact-view');
     }
   }, []);
 
@@ -60,9 +72,18 @@ export function Settings({ open, onOpenChange }: SettingsProps) {
     const settings = {
       aiEnabled,
       autoApplyAI,
+      compactView,
       scoringWeights,
     };
     localStorage.setItem('dealOptimizerSettings', JSON.stringify(settings));
+    
+    // Apply compact view immediately to document
+    if (compactView) {
+      document.documentElement.classList.add('compact-view');
+    } else {
+      document.documentElement.classList.remove('compact-view');
+    }
+    
     toast({
       title: "Settings saved",
       description: "Your preferences have been updated successfully.",
@@ -467,7 +488,11 @@ export function Settings({ open, onOpenChange }: SettingsProps) {
                       Show more deals per page in tables
                     </p>
                   </div>
-                  <Switch />
+                  <Switch 
+                    checked={compactView}
+                    onCheckedChange={setCompactView}
+                    defaultChecked
+                  />
                 </div>
               </CardContent>
             </Card>
