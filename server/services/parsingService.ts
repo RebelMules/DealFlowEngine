@@ -95,12 +95,37 @@ class ParsingService {
   private detectExcelType(data: any[][], filename: string): string {
     const lowerFilename = filename.toLowerCase();
     
-    // Find header row
+    // Find header row by looking for item identifier keywords
     let headerRow: string[] = [];
-    for (let i = 0; i < Math.min(5, data.length); i++) {
-      if (data[i] && data[i].length > 3) {
-        headerRow = data[i].map(h => String(h || '').trim().toUpperCase());
-        break;
+    let headerRowIndex = -1;
+    
+    // Item identifier keywords that indicate a true header row
+    const itemIdentifiers = ['ORDER #', 'ITEM #', 'ITEM NO', 'AWG ITEM', 'AWG', 'ITEM CODE', 'SKU', 'PRODUCT CODE'];
+    
+    for (let i = 0; i < Math.min(10, data.length); i++) {
+      if (data[i] && data[i].length > 2) {
+        const rowHeaders = data[i].map(h => String(h || '').trim().toUpperCase());
+        
+        // Check if this row contains any item identifier keywords
+        const hasItemIdentifier = itemIdentifiers.some(identifier => 
+          rowHeaders.some(header => header.includes(identifier))
+        );
+        
+        if (hasItemIdentifier) {
+          headerRow = rowHeaders;
+          headerRowIndex = i;
+          break;
+        }
+      }
+    }
+    
+    // Fallback to first non-empty row if no item identifier found
+    if (headerRow.length === 0) {
+      for (let i = 0; i < Math.min(5, data.length); i++) {
+        if (data[i] && data[i].length > 3) {
+          headerRow = data[i].map(h => String(h || '').trim().toUpperCase());
+          break;
+        }
       }
     }
     
@@ -138,19 +163,33 @@ class ParsingService {
     return 'unknown';
   }
 
+  // Helper function to intelligently find header row
+  private findHeaderRow(data: any[][], itemIdentifiers: string[]): number {
+    for (let i = 0; i < Math.min(10, data.length); i++) {
+      if (data[i] && data[i].length > 2) {
+        const rowHeaders = data[i].map(h => String(h || '').trim().toUpperCase());
+        
+        // Check if this row contains any item identifier keywords
+        const hasItemIdentifier = itemIdentifiers.some(identifier => 
+          rowHeaders.some(header => header.includes(identifier))
+        );
+        
+        if (hasItemIdentifier) {
+          return i;
+        }
+      }
+    }
+    return -1; // Not found
+  }
+
   private parseAdPlanner(data: any[][]): ParsingResult {
     const deals: ParsedDeal[] = [];
     const errors: string[] = [];
     let headerRowIndex = -1;
     let headerMap: Record<string, number> = {};
     
-    // Find header row
-    for (let i = 0; i < Math.min(5, data.length); i++) {
-      if (data[i] && data[i].some(cell => String(cell || '').toUpperCase().includes('ORDER #'))) {
-        headerRowIndex = i;
-        break;
-      }
-    }
+    // Find header row using intelligent detection
+    headerRowIndex = this.findHeaderRow(data, ['ORDER #', 'ITEM #', 'ITEM NO', 'AWG ITEM']);
     
     if (headerRowIndex === -1) {
       errors.push('Could not find header row with ORDER # column');
@@ -283,16 +322,8 @@ class ParsingService {
     let headerRowIndex = -1;
     let headerMap: Record<string, number> = {};
     
-    // Find header row - deli/bakery files often have headers containing ITEM NO or ORDER #
-    for (let i = 0; i < Math.min(10, data.length); i++) {
-      if (data[i] && data[i].some(cell => {
-        const str = String(cell || '').toUpperCase();
-        return str.includes('ITEM') || str.includes('ORDER') || str.includes('DESC');
-      })) {
-        headerRowIndex = i;
-        break;
-      }
-    }
+    // Find header row using intelligent detection
+    headerRowIndex = this.findHeaderRow(data, ['AWG ITEM', 'AWG', 'ITEM NO', 'ITEM #', 'ORDER #', 'ITEM']);
     
     if (headerRowIndex === -1) {
       errors.push('Could not find header row in deli/bakery file');
@@ -394,16 +425,8 @@ class ParsingService {
     const errors: string[] = [];
     let headerRowIndex = -1;
     
-    // Find header row by looking for common column names
-    for (let i = 0; i < Math.min(10, data.length); i++) {
-      if (data[i] && data[i].some(cell => {
-        const str = String(cell || '').toUpperCase();
-        return str.includes('ITEM') || str.includes('DESCRIPTION') || str.includes('COST');
-      })) {
-        headerRowIndex = i;
-        break;
-      }
-    }
+    // Find header row using intelligent detection
+    headerRowIndex = this.findHeaderRow(data, ['ORDER #', 'ITEM #', 'ITEM NO', 'AWG ITEM', 'AWG', 'ITEM CODE', 'SKU', 'ITEM', 'DESCRIPTION', 'COST']);
     
     if (headerRowIndex !== -1) {
       // Try standard parsing
