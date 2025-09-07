@@ -101,6 +101,9 @@ export function DealDetailsDrawer({ dealId, deals, onClose }: DealDetailsDrawerP
         {/* Deal Details */}
         <div>
           <div className="bg-muted rounded-lg p-4 space-y-3">
+            <div className="mb-3 pb-3 border-b border-border">
+              <span className="text-sm font-medium text-card-foreground">{deal.description}</span>
+            </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Item Code:</span>
               <span className="font-mono text-sm text-card-foreground">{deal.itemCode}</span>
