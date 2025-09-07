@@ -63,7 +63,7 @@ export function DealDetailsDrawer({ dealId, deals, onClose }: DealDetailsDrawerP
       Produce: 0.25,
       Bakery: 0.30,
     };
-    const targetMargin = marginFloors[deal.dept] || 0.15;
+    const targetMargin = marginFloors[deal.dept] || 0.30; // Default to 30% if dept not found
     return deal.netUnitCost / (1 - targetMargin);
   };
 
@@ -144,7 +144,7 @@ export function DealDetailsDrawer({ dealId, deals, onClose }: DealDetailsDrawerP
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-muted-foreground">Required SRP</p>
+                    <p className="text-xs text-muted-foreground">Required SRP @30%</p>
                     <p className="text-sm font-medium text-card-foreground">
                       {getRequiredSRP() ? `$${getRequiredSRP()!.toFixed(2)}` : 'N/A'}
                     </p>
@@ -166,25 +166,25 @@ export function DealDetailsDrawer({ dealId, deals, onClose }: DealDetailsDrawerP
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">Total Scan</span>
                   <span className="text-sm font-medium text-card-foreground">
-                    {getTotalScan().toFixed(0)}
+                    {getTotalScan().toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">Ad Scan</span>
                   <span className="text-xs text-muted-foreground">
-                    {deal.adScan ? deal.adScan.toFixed(0) : '0'}
+                    {deal.adScan ? deal.adScan.toFixed(2) : '0.00'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">TPR Scan</span>
                   <span className="text-xs text-muted-foreground">
-                    {deal.tprScan ? deal.tprScan.toFixed(0) : '0'}
+                    {deal.tprScan ? deal.tprScan.toFixed(2) : '0.00'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">EDLC Scan</span>
                   <span className="text-xs text-muted-foreground">
-                    {deal.edlcScan ? deal.edlcScan.toFixed(0) : '0'}
+                    {deal.edlcScan ? deal.edlcScan.toFixed(2) : '0.00'}
                   </span>
                 </div>
               </div>
