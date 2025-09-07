@@ -94,27 +94,42 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
 
   return (
     <div className="bg-card rounded-lg border border-border overflow-hidden h-full flex flex-col">
-      <div className="flex-1 overflow-auto">
-        <table className="w-full relative">
-          <thead className="bg-muted sticky top-0 z-10">
+      {/* Scrollable table container with fixed height */}
+      <div className="flex-1 relative overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)]">
+        <table className="w-full table-fixed">
+          {/* Column widths definition */}
+          <colgroup>
+            <col className="w-12" /> {/* Checkbox */}
+            <col className="w-28" /> {/* Item Code */}
+            <col className="w-80" /> {/* Description */}
+            <col className="w-20" /> {/* Dept */}
+            <col className="w-24" /> {/* Cost */}
+            <col className="w-24" /> {/* Ad SRP */}
+            <col className="w-40" /> {/* Score */}
+            <col className="w-52" /> {/* Components */}
+            <col className="w-32" /> {/* Actions */}
+          </colgroup>
+          
+          <thead className="bg-muted sticky top-0 z-20 border-b border-border">
             <tr>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">
                 <Checkbox
                   checked={selectedDeals.size === deals.length && deals.length > 0}
                   onCheckedChange={handleSelectAll}
                   data-testid="select-all-checkbox"
                 />
               </th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Item Code</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Description</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Dept</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Cost</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Ad SRP</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Score</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Components</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Actions</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Item Code</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Description</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Dept</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Cost</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Ad SRP</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Score</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Components</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Actions</th>
             </tr>
           </thead>
+          
           <tbody className="divide-y divide-border">
             {deals.map((deal) => {
             const interpretation = deal.score ? getScoreInterpretation(deal.score.total) : null;
@@ -123,41 +138,41 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
               <tr 
                 key={deal.id} 
                 className={cn(
-                  "table-row-hover transition-colors cursor-pointer",
+                  "hover:bg-accent/50 transition-colors cursor-pointer",
                   selectedDealId === deal.id && "bg-accent/50"
                 )}
                 onClick={() => onSelectDeal(deal.id)}
                 data-testid={`deal-row-${deal.id}`}
               >
-                <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selectedDeals.has(deal.id)}
                     onCheckedChange={(checked) => handleSelectDeal(deal.id, checked as boolean)}
                     data-testid={`select-deal-${deal.id}`}
                   />
                 </td>
-                <td className="py-3 px-4 font-mono text-sm text-card-foreground whitespace-nowrap">
+                <td className="py-3 px-4 font-mono text-sm text-card-foreground">
                   {deal.itemCode}
                 </td>
-                <td className="py-3 px-4 text-sm text-card-foreground max-w-xs truncate">
+                <td className="py-3 px-4 text-sm text-card-foreground">
                   <div className="truncate" title={deal.description}>
                     {deal.description}
                   </div>
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap">
-                  <Badge className={cn("score-chip px-2 py-1", getDeptChipClass(deal.dept))}>
+                <td className="py-3 px-4">
+                  <Badge className={cn("score-chip px-2 py-1 inline-flex", getDeptChipClass(deal.dept))}>
                     {getDeptEmoji(deal.dept)}
                   </Badge>
                 </td>
-                <td className="py-3 px-4 text-sm text-card-foreground whitespace-nowrap">
+                <td className="py-3 px-4 text-sm text-card-foreground">
                   {deal.cost ? `$${deal.cost.toFixed(2)}` : '-'}
                 </td>
-                <td className="py-3 px-4 text-sm font-medium text-card-foreground whitespace-nowrap">
+                <td className="py-3 px-4 text-sm font-medium text-card-foreground">
                   {deal.adSrp ? `$${deal.adSrp.toFixed(2)}` : '-'}
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap">
+                <td className="py-3 px-4">
                   {deal.score ? (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <span className={cn("text-lg", getScoreColor(deal.score.total))}>
                         {deal.score.total.toFixed(1)}
                       </span>
@@ -171,24 +186,27 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
                 </td>
                 <td className="py-3 px-4">
                   {deal.score ? (
-                    <div className="flex flex-wrap gap-1 min-w-[200px]">
-                      <Badge className="score-chip score-chip-margin">
-                        Margin: {deal.score.components.margin.toFixed(0)}
+                    <div className="flex flex-wrap gap-1">
+                      <Badge className="score-chip score-chip-margin text-xs">
+                        M: {deal.score.components.margin.toFixed(0)}
                       </Badge>
-                      <Badge className="score-chip score-chip-velocity">
-                        Velocity: {deal.score.components.velocity.toFixed(0)}
+                      <Badge className="score-chip score-chip-velocity text-xs">
+                        V: {deal.score.components.velocity.toFixed(0)}
                       </Badge>
-                      <Badge className="score-chip score-chip-funding">
-                        Funding: {deal.score.components.funding.toFixed(0)}
+                      <Badge className="score-chip score-chip-funding text-xs">
+                        F: {deal.score.components.funding.toFixed(0)}
                       </Badge>
                     </div>
-                  ) : null}
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center space-x-2">
+                <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1">
                     <Button 
                       variant="ghost" 
                       size="sm"
+                      className="h-8 w-8 p-0"
                       onClick={() => onSelectDeal(deal.id)}
                       title="View Details"
                       data-testid={`view-deal-${deal.id}`}
@@ -198,6 +216,7 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
                     <Button 
                       variant="ghost" 
                       size="sm"
+                      className="h-8 w-8 p-0"
                       title="Open Original"
                       data-testid={`open-original-${deal.id}`}
                     >
@@ -206,6 +225,7 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
                     <Button 
                       variant="ghost" 
                       size="sm"
+                      className="h-8 w-8 p-0"
                       title="Lock Item"
                       data-testid={`lock-deal-${deal.id}`}
                     >
@@ -221,7 +241,7 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
       </div>
 
       {/* Status Bar */}
-      <div className="flex items-center justify-between p-4 border-t border-border">
+      <div className="flex items-center justify-between p-4 border-t border-border bg-background">
         <div className="text-sm text-muted-foreground">
           Total: {deals.length} deals
         </div>
