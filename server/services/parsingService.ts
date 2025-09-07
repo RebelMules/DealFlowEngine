@@ -637,13 +637,42 @@ class ParsingService {
     }
 
     try {
-      // Step 1: Extract text from PDF using dynamic import to avoid startup issues
-      const fileBuffer = await fs.readFile(filePath);
-      const pdfParse = (await import('pdf-parse')).default;
-      const pdfData = await pdfParse(fileBuffer);
-      const extractedText = pdfData.text;
+      // Step 1: Extract text from PDF using pdf2json
+      const PDFParser = (await import('pdf2json')).default;
+      const pdfParser = new PDFParser();
+      
+      const extractedText = await new Promise<string>((resolve, reject) => {
+        pdfParser.on('pdfParser_dataError', (errData: any) => reject(errData.parserError));
+        pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+          // Extract text from the PDF data
+          let text = '';
+          if (pdfData && pdfData.Pages) {
+            for (const page of pdfData.Pages) {
+              if (page.Texts) {
+                for (const textItem of page.Texts) {
+                  if (textItem.R) {
+                    for (const r of textItem.R) {
+                      if (r.T) {
+                        text += decodeURIComponent(r.T) + ' ';
+                      }
+                    }
+                  }
+                }
+                text += '\n';
+              }
+            }
+          }
+          resolve(text);
+        });
+        
+        pdfParser.loadPDF(filePath);
+      });
       
       console.log(`Extracted ${extractedText.length} characters from PDF`);
+      
+      if (!extractedText || extractedText.trim().length === 0) {
+        throw new Error('No text could be extracted from the PDF');
+      }
       
       // Step 2: Parse extracted text with AI
       const aiResult = await aiService.parseExtractedText(extractedText, path.basename(filePath), 'pdf');
