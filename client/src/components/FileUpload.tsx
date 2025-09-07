@@ -82,7 +82,7 @@ export function FileUpload({ weekId, onClose, onUploadComplete }: FileUploadProp
   };
 
   const uploadFiles = async () => {
-    if (files.length === 0) return;
+    if (files.length === 0 || isUploading) return;
 
     setIsUploading(true);
     const formData = new FormData();
