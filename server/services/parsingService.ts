@@ -13,10 +13,14 @@ interface ParsedDeal {
   dept: string;
   upc?: string;
   cost?: number;
+  netUnitCost?: number;
   srp?: number;
   adSrp?: number;
   vendorFundingPct?: number;
   mvmt?: number;
+  adScan?: number;
+  tprScan?: number;
+  edlcScan?: number;
   competitorPrice?: number;
   pack?: string;
   size?: string;
@@ -185,10 +189,14 @@ class ParsingService {
           dept: this.normalizeDept(String(row[headerMap['DEPT']] || '')),
           upc: this.cleanUPC(String(row[headerMap['UPC']] || '')),
           cost: this.parseNumber(row[headerMap['UCOST']] || row[headerMap['COST']]),
+          netUnitCost: this.parseNumber(row[headerMap['NET UNIT COST']]),
           srp: this.parseNumber(row[headerMap['REGSRP']]),
-          adSrp: this.parseNumber(row[headerMap['AD SRP']]),
+          adSrp: this.parseNumber(row[headerMap['AD SRP']] || row[headerMap['AD_SRP']]),
           vendorFundingPct: this.parsePercentage(row[headerMap['AMAP']]),
           mvmt: this.parseNumber(row[headerMap['MVMT']]),
+          adScan: this.parseNumber(row[headerMap['ADSCAN']]),
+          tprScan: this.parseNumber(row[headerMap['TPRSCAN']]),
+          edlcScan: this.parseNumber(row[headerMap['EDLC SCAN']]),
           pack: String(row[headerMap['PK']] || '').trim() || undefined,
           size: String(row[headerMap['SZ']] || '').trim() || undefined,
         };

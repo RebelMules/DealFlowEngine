@@ -88,9 +88,9 @@ class ScoringService {
   }
 
   private scoreMargin(deal: DealRow): number {
-    if (!deal.cost || !deal.adSrp) return 0;
+    if (!deal.netUnitCost || !deal.adSrp) return 0;
     
-    const marginPct = (deal.adSrp - deal.cost) / deal.adSrp;
+    const marginPct = (deal.adSrp - deal.netUnitCost) / deal.adSrp;
     const floorPct = this.marginFloors[deal.dept] || 0.15;
     
     // Below floor gets 0, at floor gets 50, 30%+ gets 100
