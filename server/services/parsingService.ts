@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import type { InsertDealRow } from '@shared/schema';
 import { aiService } from './aiService';
+import pdfParse from 'pdf-parse';
 
 interface ParsedDeal {
   itemCode: string;
@@ -636,9 +637,15 @@ class ParsingService {
     }
 
     try {
-      // Read file and apply AI extraction
+      // Step 1: Extract text from PDF
       const fileBuffer = await fs.readFile(filePath);
-      const aiResult = await aiService.parseDocument(fileBuffer, path.basename(filePath), 'pdf');
+      const pdfData = await pdfParse(fileBuffer);
+      const extractedText = pdfData.text;
+      
+      console.log(`Extracted ${extractedText.length} characters from PDF`);
+      
+      // Step 2: Parse extracted text with AI
+      const aiResult = await aiService.parseExtractedText(extractedText, path.basename(filePath), 'pdf');
       
       // Map AI results to our deal format
       const deals: ParsedDeal[] = aiResult.deals.map((deal: any) => ({
@@ -662,15 +669,16 @@ class ParsingService {
         deals,
         totalRows: aiResult.totalExtracted || deals.length,
         parsedRows: deals.length,
-        errors: aiResult.warnings || [],
+        errors: [],
         detectedType: 'pdf',
       };
     } catch (error) {
+      console.error('PDF parsing error:', error);
       return {
         deals: [],
         totalRows: 0,
         parsedRows: 0,
-        errors: [`AI PDF extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        errors: [`PDF extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
         detectedType: 'pdf',
       };
     }

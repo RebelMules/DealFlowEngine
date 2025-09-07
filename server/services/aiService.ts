@@ -54,6 +54,124 @@ class AIService {
     return this.isEnabled() && this.weeklySpent < this.config.weeklyBudgetUsd;
   }
 
+  // Parse extracted text from documents (PDF, PPTX, etc.)
+  async parseExtractedText(extractedText: string, filename: string, detectedType: string): Promise<any> {
+    if (!this.canProcessDocument()) {
+      throw new Error('AI service not available (missing API key or budget exceeded)');
+    }
+
+    const systemPrompt = `You are a retail deal extraction specialist. Parse the provided text and extract deal information into a structured format.
+    
+    Focus on:
+    - Item codes, descriptions, and departments
+    - Pricing information (cost, retail, sale prices)
+    - Vendor information and funding
+    - Promotional dates and periods
+    - Movement/velocity data
+    
+    Return the data as a CSV-like JSON array with consistent field names.`;
+
+    const userPrompt = `Extract all deal information from this ${detectedType} text into a JSON array.
+    
+    Each item should have these fields (use null if not found):
+    - itemCode: Product code or SKU
+    - description: Product name/description
+    - dept: Department (Grocery, Meat, Produce, Bakery, etc.)
+    - cost: Unit cost
+    - netUnitCost: Net unit cost after discounts
+    - srp: Regular retail price
+    - adSrp: Advertised/sale price
+    - vendorFundingPct: Vendor funding percentage
+    - mvmt: Movement/velocity
+    - vendor: Vendor name
+    - promoStart: Start date (YYYY-MM-DD)
+    - promoEnd: End date (YYYY-MM-DD)
+    
+    Text to parse:
+    ${extractedText.substring(0, 15000)} ${extractedText.length > 15000 ? '...(truncated)' : ''}
+    
+    IMPORTANT: Return ONLY a valid JSON array, no explanation or markdown.`;
+
+    try {
+      const response = await this.anthropic!.messages.create({
+        model: DEFAULT_MODEL_STR,
+        max_tokens: 8000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+        temperature: 0.1,
+      });
+
+      const content = response.content[0].type === 'text' ? response.content[0].text : '';
+      
+      // Try multiple parsing strategies
+      let deals;
+      
+      // Strategy 1: Direct JSON parse
+      try {
+        deals = JSON.parse(content);
+      } catch (e1) {
+        // Strategy 2: Extract JSON array from text
+        const jsonMatch = content.match(/\[.*\]/s);
+        if (jsonMatch) {
+          try {
+            deals = JSON.parse(jsonMatch[0]);
+          } catch (e2) {
+            // Strategy 3: Extract between code blocks
+            const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (codeBlockMatch) {
+              deals = JSON.parse(codeBlockMatch[1]);
+            } else {
+              throw new Error('Could not extract valid JSON from AI response');
+            }
+          }
+        } else {
+          throw new Error('No JSON array found in AI response');
+        }
+      }
+
+      // Ensure deals is an array
+      if (!Array.isArray(deals)) {
+        deals = [deals];
+      }
+
+      // Clean and validate the data
+      const processedDeals = deals.map((deal: any, index: number) => ({
+        itemCode: String(deal.itemCode || `ITEM_${index + 1}`),
+        description: deal.description || '',
+        dept: deal.dept || 'General',
+        cost: this.parseNumber(deal.cost),
+        netUnitCost: this.parseNumber(deal.netUnitCost) || this.parseNumber(deal.cost),
+        srp: this.parseNumber(deal.srp),
+        adSrp: this.parseNumber(deal.adSrp),
+        vendorFundingPct: this.parseNumber(deal.vendorFundingPct),
+        mvmt: this.parseNumber(deal.mvmt),
+        vendor: deal.vendor || 'Unknown',
+        promoStart: deal.promoStart,
+        promoEnd: deal.promoEnd,
+      }));
+
+      this.weeklySpent += 0.15;
+
+      return {
+        deals: processedDeals,
+        totalExtracted: processedDeals.length,
+        parsedRows: processedDeals.length,
+        errors: [],
+        detectedType,
+        aiEnhanced: true,
+      };
+    } catch (error) {
+      console.error('AI text parsing error:', error);
+      throw new Error(`Failed to parse extracted text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private parseNumber(value: any): number | undefined {
+    if (value == null) return undefined;
+    const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]/g, '')) : Number(value);
+    return isNaN(num) ? undefined : num;
+  }
+
   // Enhanced document parsing using advanced AI capabilities with multimodal support
   async parseDocument(buffer: Buffer, filename: string, detectedType: string): Promise<any> {
     if (!this.canProcessDocument()) {
