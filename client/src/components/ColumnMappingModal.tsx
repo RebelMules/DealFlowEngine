@@ -53,12 +53,25 @@ export function ColumnMappingModal({
   detectedColumns = [],
 }: ColumnMappingModalProps) {
   const { toast } = useToast();
-  const [mappings, setMappings] = useState<Record<string, string>>({});
-
+  
   // Sample detected columns if none provided
   const columns = detectedColumns.length > 0 ? detectedColumns : [
     "ORDER #", "ITEM DESC", "DEPT", "UPC", "UCOST", "SRP", "AD SRP", "MVMT"
   ];
+
+  // Initialize mappings with automatic detection for ORDER #
+  const [mappings, setMappings] = useState<Record<string, string>>(() => {
+    const initialMappings: Record<string, string> = {};
+    
+    // Always map ORDER # to itemCode
+    columns.forEach(col => {
+      if (col.toUpperCase() === "ORDER #") {
+        initialMappings[col] = "itemCode";
+      }
+    });
+    
+    return initialMappings;
+  });
 
   const handleMappingChange = (sourceColumn: string, targetColumn: string) => {
     setMappings(prev => ({
