@@ -781,8 +781,8 @@ class ParsingService {
     ]);
     
     const adSrpRaw = findColumn([
-      'AD PRICE', 'AD SRP', 'SALE PRICE', 'PROMO PRICE', 'SPECIAL', 'AD',
-      'ADPRICE', 'AD_PRICE', 'ADSRP', 'AD_SRP', 'SALEPRICE', 'SALE_PRICE',
+      'AD_SRP', 'AD SRP', 'AD PRICE', 'SALE PRICE', 'PROMO PRICE', 'SPECIAL', 'AD',
+      'ADPRICE', 'AD_PRICE', 'ADSRP', 'SALEPRICE', 'SALE_PRICE',
       'PROMOPRICE', 'PROMO_PRICE', 'SPECIALPRICE', 'SPECIAL_PRICE', 'SPECIAL PRICE',
       'PROMOTIONAL', 'PROMOTIONAL PRICE', 'PROMOTIONALPRICE', 'PROMOTIONAL_PRICE',
       'DISCOUNT PRICE', 'DISCOUNTPRICE', 'DISCOUNT_PRICE', 'OFFER PRICE', 'OFFERPRICE', 'OFFER_PRICE'
@@ -798,18 +798,40 @@ class ParsingService {
     const srp = this.parseNumber(srpRaw);
     const adSrp = this.parseNumber(adSrpRaw);
     
+    // Extract net unit cost and scan fields
+    const netUnitCost = this.parseNumber(findColumn([
+      'NET UNIT COST', 'NETUNITCOST', 'NET_UNIT_COST', 'NUC', 
+      'NET COST PER UNIT', 'UNIT NET COST', 'NETCOST/UNIT'
+    ]));
+    
+    const adScan = this.parseNumber(findColumn([
+      'ADSCAN', 'AD SCAN', 'AD_SCAN', 'SCAN AD', 'AD UNITS'
+    ]));
+    
+    const tprScan = this.parseNumber(findColumn([
+      'TPRSCAN', 'TPR SCAN', 'TPR_SCAN', 'SCAN TPR', 'TPR UNITS'
+    ]));
+    
+    const edlcScan = this.parseNumber(findColumn([
+      'EDLC SCAN', 'EDLCSCAN', 'EDLC_SCAN', 'SCAN EDLC', 'EDLC UNITS', 'EDLC'
+    ]));
+    
     return {
       itemCode: String(itemCode).trim(),
       description: String(description).trim(),
       dept: this.normalizeDept(String(dept)),
       cost: cost,
+      netUnitCost: netUnitCost,
       srp: srp,
       adSrp: adSrp,
+      adScan: adScan,
+      tprScan: tprScan,
+      edlcScan: edlcScan,
       upc: this.cleanUPC(String(findColumn(['UPC', 'BARCODE', 'EAN']) || '')),
       pack: String(findColumn(['PACK', 'PK', 'PACKAGE', 'CASE']) || '').trim() || undefined,
       size: String(findColumn(['SIZE', 'SZ', 'WEIGHT', 'WT']) || '').trim() || undefined,
       mvmt: this.parseNumber(findColumn(['MVMT', 'MOVEMENT', 'VELOCITY', 'UNITS'])),
-      vendorFundingPct: this.parsePercentage(findColumn(['FUNDING', 'VENDOR FUNDING', 'REBATE', 'ALLOWANCE'])),
+      vendorFundingPct: this.parsePercentage(findColumn(['FUNDING', 'VENDOR FUNDING', 'REBATE', 'ALLOWANCE', 'AMAP'])),
     };
   }
 
