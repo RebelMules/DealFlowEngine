@@ -223,20 +223,25 @@ class ParsingService {
       if (!orderNum || !itemDesc || itemDesc.toLowerCase().includes('total')) continue;
       
       try {
+        // Handle both standard and Alliance/Hernando column variations
+        const costValue = this.parseNumber(row[headerMap['COST']]);
+        const ucostValue = this.parseNumber(row[headerMap['UCOST']]);
+        const netUnitCostValue = this.parseNumber(row[headerMap['NET UNIT COST']]);
+        
         const deal: ParsedDeal = {
           itemCode: orderNum,
           description: itemDesc,
           dept: this.normalizeDept(String(row[headerMap['DEPT']] || '')),
           upc: this.cleanUPC(String(row[headerMap['UPC']] || '')),
-          cost: this.parseNumber(row[headerMap['UCOST']] || row[headerMap['COST']]),
-          netUnitCost: this.parseNumber(row[headerMap['NET UNIT COST']]),
+          cost: costValue || ucostValue,  // Use COST if available, otherwise UCOST
+          netUnitCost: netUnitCostValue || ucostValue || costValue,  // Prefer NET UNIT COST, then UCOST, then COST
           srp: this.parseNumber(row[headerMap['REGSRP']]),
           adSrp: this.parseNumber(row[headerMap['AD SRP']] || row[headerMap['AD_SRP']]),
           vendorFundingPct: this.parsePercentage(row[headerMap['AMAP']]),
           mvmt: this.parseNumber(row[headerMap['MVMT']]),
           adScan: this.parseNumber(row[headerMap['ADSCAN']]),
           tprScan: this.parseNumber(row[headerMap['TPRSCAN']]),
-          edlcScan: this.parseNumber(row[headerMap['EDLC SCAN']]),
+          edlcScan: this.parseNumber(row[headerMap['EDLC SCAN']] || row[headerMap['ESCAN']]),
           pack: String(row[headerMap['PK']] || '').trim() || undefined,
           size: String(row[headerMap['SZ']] || '').trim() || undefined,
         };
