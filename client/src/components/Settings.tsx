@@ -183,6 +183,204 @@ export function Settings({ open, onOpenChange }: SettingsProps) {
           </TabsContent>
 
           <TabsContent value="scoring" className="space-y-4">
+            {/* Scoring Metrics Explanation */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Scoring Metrics & Calculations</CardTitle>
+                <CardDescription>
+                  Understanding how each component is calculated
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  {/* Margin Component */}
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-chart-2/20 flex items-center justify-center">
+                        <span className="text-chart-2 font-bold">M</span>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-medium text-sm">Margin Score (0-100)</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Calculated from gross profit percentage (GP%)
+                        </p>
+                        <div className="bg-background rounded-md p-2 space-y-1">
+                          <code className="text-xs block">GP$ = Ad SRP - Net Unit Cost</code>
+                          <code className="text-xs block">GP% = GP$ / Ad SRP × 100</code>
+                        </div>
+                        <div className="text-xs space-y-1 text-muted-foreground">
+                          <p>• Below dept floor (18-30%) = 0 points</p>
+                          <p>• At dept floor = 50 points</p>
+                          <p>• 30%+ margin = 100 points</p>
+                          <p>• Linear scale between floor and 30%</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Velocity Component */}
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-chart-3/20 flex items-center justify-center">
+                        <span className="text-chart-3 font-bold">V</span>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-medium text-sm">Velocity Score (0-100)</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Based on movement multiplier (mvmt)
+                        </p>
+                        <div className="text-xs space-y-1 text-muted-foreground">
+                          <p>• 0-1x movement = 0 points</p>
+                          <p>• 1-2x movement = 20 points</p>
+                          <p>• 2-3x movement = 40 points</p>
+                          <p>• 3-5x movement = 60 points</p>
+                          <p>• 5-10x movement = 80 points</p>
+                          <p>• 10x+ movement = 100 points</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Funding Component */}
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-chart-4/20 flex items-center justify-center">
+                        <span className="text-chart-4 font-bold">F</span>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-medium text-sm">Funding Score (0-100)</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Vendor funding percentage contribution
+                        </p>
+                        <div className="text-xs space-y-1 text-muted-foreground">
+                          <p>• No funding = 0 points</p>
+                          <p>• 0-5% funding = 20 points</p>
+                          <p>• 5-10% funding = 40 points</p>
+                          <p>• 10-15% funding = 70 points</p>
+                          <p>• 15-20% funding = 85 points</p>
+                          <p>• 20%+ funding = 100 points</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Theme Component */}
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-chart-5/20 flex items-center justify-center">
+                        <span className="text-chart-5 font-bold">T</span>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-medium text-sm">Theme Score (0-100)</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Seasonal relevance and trends
+                        </p>
+                        <div className="text-xs space-y-1 text-muted-foreground">
+                          <p>• Base score = 50 points</p>
+                          <p>• +15 pts for seasonal match (summer, winter, etc)</p>
+                          <p>• +20 pts for holiday relevance</p>
+                          <p>• +15 pts for health trends (organic, keto, etc)</p>
+                          <p>• Max combined = 100 points</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Timing Component */}
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-chart-1/20 flex items-center justify-center">
+                        <span className="text-chart-1 font-bold">Ti</span>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-medium text-sm">Timing Score (0-100)</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Promotion start date proximity
+                        </p>
+                        <div className="text-xs space-y-1 text-muted-foreground">
+                          <p>• Within 3 days = 100 points</p>
+                          <p>• Within 7 days = 80 points</p>
+                          <p>• Within 14 days = 60 points</p>
+                          <p>• Beyond 14 days = 40 points</p>
+                          <p>• No timing info = 60 points (default)</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Competitive Component */}
+                  <div className="p-3 rounded-lg border bg-muted/50">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
+                        <span className="text-secondary font-bold">C</span>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-medium text-sm">Competitive Score (0-100)</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Price advantage vs competitors
+                        </p>
+                        <div className="bg-background rounded-md p-2 space-y-1">
+                          <code className="text-xs block">Advantage = (Competitor Price - Ad SRP) / Competitor Price</code>
+                        </div>
+                        <div className="text-xs space-y-1 text-muted-foreground">
+                          <p>• 15%+ cheaper = 100 points</p>
+                          <p>• 10-15% cheaper = 80 points</p>
+                          <p>• 5-10% cheaper = 60 points</p>
+                          <p>• Less than 5% = 20 points</p>
+                          <p>• No competitor data = 50 points (default)</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Metrics */}
+                <Separator />
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Additional Calculations</h4>
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    <div className="p-2 rounded-md bg-muted">
+                      <p className="font-medium text-foreground mb-1">Required SRP</p>
+                      <code className="block">Required SRP = Net Unit Cost / (1 - Target Margin %)</code>
+                      <p className="mt-1">Shows the SRP needed to achieve department target margin</p>
+                    </div>
+                    <div className="p-2 rounded-md bg-muted">
+                      <p className="font-medium text-foreground mb-1">Effective BOGO Price</p>
+                      <code className="block">Effective Price = Regular SRP / 2</code>
+                      <p className="mt-1">Applied when deal includes Buy One Get One promotions</p>
+                    </div>
+                    <div className="p-2 rounded-md bg-muted">
+                      <p className="font-medium text-foreground mb-1">Total Scan</p>
+                      <code className="block">Total = Ad Scan + TPR Scan + EDLC Scan</code>
+                      <p className="mt-1">Combined scan performance across all channels</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Department Margin Floors */}
+                <Separator />
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Department Margin Floors</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { dept: 'Meat', floor: '18%' },
+                      { dept: 'Grocery', floor: '22%' },
+                      { dept: 'Produce', floor: '25%' },
+                      { dept: 'Bakery', floor: '30%' },
+                      { dept: 'Deli', floor: '28%' },
+                      { dept: 'Default', floor: '30%' },
+                    ].map((item) => (
+                      <div key={item.dept} className="flex items-center justify-between p-2 rounded-md bg-muted text-xs">
+                        <span className="font-medium">{item.dept}:</span>
+                        <span className="text-muted-foreground">{item.floor}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Scoring Weights Configuration */}
             <Card>
               <CardHeader>
                 <CardTitle>Scoring Weights</CardTitle>
