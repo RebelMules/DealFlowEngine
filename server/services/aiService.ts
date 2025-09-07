@@ -25,14 +25,20 @@ class AIService {
   private weeklySpent: number = 0;
 
   constructor() {
+    // Auto-enable AI if API keys are present
+    const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
+    const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+    const explicitlyEnabled = process.env.AI_ENABLED === 'true';
+    const explicitlyDisabled = process.env.AI_ENABLED === 'false';
+    
     this.config = {
-      enabled: process.env.AI_ENABLED === 'true',
+      enabled: explicitlyDisabled ? false : (explicitlyEnabled || hasAnthropicKey || hasOpenAIKey),
       provider: process.env.AI_PROVIDER || 'anthropic',
       model: process.env.AI_MODEL || DEFAULT_MODEL_STR,
-      weeklyBudgetUsd: parseFloat(process.env.AI_WEEKLY_BUDGET_USD || '5'),
+      weeklyBudgetUsd: parseFloat(process.env.AI_WEEKLY_BUDGET_USD || '50'), // Increased default budget
     };
 
-    if (this.config.enabled && this.config.provider === 'anthropic') {
+    if (this.config.enabled && this.config.provider === 'anthropic' && hasAnthropicKey) {
       this.anthropic = new Anthropic({
         apiKey: process.env.ANTHROPIC_API_KEY,
       });
@@ -40,13 +46,18 @@ class AIService {
   }
 
   isEnabled(): boolean {
-    return this.config.enabled;
+    return this.config.enabled && (!!this.anthropic || !!process.env.OPENAI_API_KEY);
+  }
+
+  canProcessDocument(): boolean {
+    // Check if AI can process documents (has API key and budget)
+    return this.isEnabled() && this.weeklySpent < this.config.weeklyBudgetUsd;
   }
 
   // Enhanced document parsing using advanced AI capabilities with multimodal support
   async parseDocument(buffer: Buffer, filename: string, detectedType: string): Promise<any> {
-    if (!this.anthropic || !this.isEnabled()) {
-      throw new Error('AI service not enabled or configured');
+    if (!this.canProcessDocument()) {
+      throw new Error('AI service not available (missing API key or budget exceeded)');
     }
 
     if (this.weeklySpent >= this.config.weeklyBudgetUsd) {
@@ -106,7 +117,7 @@ class AIService {
         messageContent = [{ type: 'text', text: userPrompt }];
       }
 
-      const response = await this.anthropic.messages.create({
+      const response = await this.anthropic!.messages.create({
         model: DEFAULT_MODEL_STR, // Using claude-sonnet-4-20250514 for advanced capabilities
         max_tokens: 8000, // Increased for complex documents
         system: systemPrompt,

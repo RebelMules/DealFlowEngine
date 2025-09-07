@@ -565,11 +565,13 @@ class ParsingService {
       }
     }
     
-    // If standard parsing failed or got few results, try AI
-    if (deals.length < 5 && aiService.isEnabled()) {
-      errors.push('Standard parsing yielded limited results, applying AI assistance...');
-      // AI would need the Excel file buffer, not just the data array
-      // For now, return what we have
+    // If standard parsing failed or got few results, notify about AI availability
+    if (deals.length < 5) {
+      if (aiService.canProcessDocument()) {
+        errors.push('Limited results from standard parsing. AI assistance is available for PDF and PowerPoint files.');
+      } else {
+        errors.push('Limited results from standard parsing. Enable AI by adding ANTHROPIC_API_KEY to improve parsing.');
+      }
     }
     
     return {
@@ -622,15 +624,13 @@ class ParsingService {
   }
 
   private async parsePDF(filePath: string): Promise<ParsingResult> {
-    // Check if AI is enabled (always on by default per settings)
-    const autoApplyAI = true; // Always on as per requirements
-    
-    if (!aiService.isEnabled() || !autoApplyAI) {
+    // AI is automatically enabled when API keys are present
+    if (!aiService.canProcessDocument()) {
       return {
         deals: [],
         totalRows: 0,
         parsedRows: 0,
-        errors: ['PDF parsing requires AI service. Please ensure AI is enabled in Settings.'],
+        errors: ['PDF parsing requires AI service with valid API key. Please add ANTHROPIC_API_KEY or OPENAI_API_KEY to environment variables.'],
         detectedType: 'pdf',
       };
     }
@@ -677,15 +677,13 @@ class ParsingService {
   }
 
   private async parsePPTX(filePath: string): Promise<ParsingResult> {
-    // Check if AI is enabled (always on by default per settings)
-    const autoApplyAI = true; // Always on as per requirements
-    
-    if (!aiService.isEnabled() || !autoApplyAI) {
+    // AI is automatically enabled when API keys are present
+    if (!aiService.canProcessDocument()) {
       return {
         deals: [],
         totalRows: 0,
         parsedRows: 0,
-        errors: ['PowerPoint parsing requires AI service. Please ensure AI is enabled in Settings.'],
+        errors: ['PowerPoint parsing requires AI service with valid API key. Please add ANTHROPIC_API_KEY or OPENAI_API_KEY to environment variables.'],
         detectedType: 'pptx',
       };
     }
