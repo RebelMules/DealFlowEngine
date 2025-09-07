@@ -160,7 +160,7 @@ export function Layout({ children }: LayoutProps) {
               </Button>
               <div>
                 <h2 className="text-lg font-semibold text-card-foreground">
-                  {currentWeek ? `Weekly Deal Bank - Week ${currentWeek.week}` : 'Deal Optimizer'}
+                  {currentWeek ? `${location.includes('/inbox') ? 'Weekly Inbox' : 'Weekly Deal Bank'} - Week ${currentWeek.week}` : 'Deal Optimizer'}
                 </h2>
                 {currentWeek && (
                   <p className="text-xs text-muted-foreground">
