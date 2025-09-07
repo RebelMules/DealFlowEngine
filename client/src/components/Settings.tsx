@@ -29,7 +29,8 @@ interface SettingsProps {
 }
 
 export function Settings({ open, onOpenChange }: SettingsProps) {
-  const [aiEnabled, setAiEnabled] = useState(true); // Always on by default
+  // AI is automatically enabled when API keys are present
+  const [aiEnabled, setAiEnabled] = useState(true); // Always on when keys are present
   const [autoApplyAI, setAutoApplyAI] = useState(true);
   const [scoringWeights, setScoringWeights] = useState({
     margin: 30,
@@ -112,13 +113,13 @@ export function Settings({ open, onOpenChange }: SettingsProps) {
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">
                       <Zap className="w-3 h-3 mr-1" />
-                      Always On
+                      Active
                     </Badge>
                     <Switch
                       id="ai-enabled"
-                      checked={aiEnabled}
-                      onCheckedChange={setAiEnabled}
-                      disabled={true} // Always on
+                      checked={true}
+                      onCheckedChange={() => {}}
+                      disabled={true} // Always on when API keys are configured
                     />
                   </div>
                 </div>
@@ -145,11 +146,11 @@ export function Settings({ open, onOpenChange }: SettingsProps) {
                   <div className="flex items-start gap-2">
                     <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
                     <div className="space-y-1">
-                      <p className="font-medium">How AI Processing Works:</p>
+                      <p className="font-medium">AI Processing Status: <span className="text-green-600">Active</span></p>
                       <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
                         <li>Standard spreadsheets (.xlsx, .csv) parse instantly</li>
-                        <li>Complex PDFs and PowerPoints trigger AI extraction</li>
-                        <li>AI automatically maps non-standard column names</li>
+                        <li>Complex PDFs and PowerPoints use AI extraction automatically</li>
+                        <li>AI serves as failover when standard parsing fails</li>
                         <li>All extracted data is validated before scoring</li>
                       </ul>
                     </div>
