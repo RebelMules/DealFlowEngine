@@ -1,0 +1,202 @@
+Love it — here’s a drop-in way to show **GP\$** and **GP%** with the explicit math `Ad SRP − Net Unit Cost = GP$ & GP%`, plus **click-to-sort** headers and simple **header filters**.
+
+I’m targeting your existing table in `client/src/components/DealsTable.tsx`, which currently renders Item Code, Description, Dept, Cost, Ad SRP, Score, etc.
+(Details drawer already uses `netUnitCost` correctly for margin math, so we’ll align the table with that. )
+
+---
+
+### 1) Add helpers for GP\$ and GP%
+
+At the top of **DealsTable.tsx** (under imports), add:
+
+```tsx
+const fmt = (n?: number | null, d = 2) =>
+  n == null ? '-' : Number.isFinite(n) ? n.toFixed(d) : '-';
+
+const gpDollars = (adSrp?: number | null, netUnitCost?: number | null) =>
+  adSrp != null && netUnitCost != null ? adSrp - netUnitCost : null;
+
+const gpPct = (adSrp?: number | null, netUnitCost?: number | null) => {
+  if (adSrp == null || netUnitCost == null || adSrp === 0) return null;
+  return (adSrp - netUnitCost) / adSrp;
+};
+```
+
+---
+
+### 2) Add sort state + header click sorting
+
+Near the top of the component, add:
+
+```tsx
+type SortKey = 'itemCode' | 'adSrp' | 'netUnitCost' | 'gp$' | 'gp%';
+
+const [sortBy, setSortBy] = React.useState<SortKey>('itemCode');
+const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('asc');
+
+const onSort = (key: SortKey) => {
+  if (sortBy === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+  else {
+    setSortBy(key);
+    setSortDir('asc');
+  }
+};
+
+const cmpNum = (a?: number | null, b?: number | null) => {
+  const A = a == null ? Number.NEGATIVE_INFINITY : a;
+  const B = b == null ? Number.NEGATIVE_INFINITY : b;
+  return A - B;
+};
+
+const sortedDeals = React.useMemo(() => {
+  const base = [...deals];
+  base.sort((a, b) => {
+    let res = 0;
+    if (sortBy === 'itemCode') res = String(a.itemCode).localeCompare(String(b.itemCode));
+    if (sortBy === 'adSrp')    res = cmpNum(a.adSrp, b.adSrp);
+    if (sortBy === 'netUnitCost') res = cmpNum(a.netUnitCost, b.netUnitCost);
+    if (sortBy === 'gp$')      res = cmpNum(gpDollars(a.adSrp, a.netUnitCost), gpDollars(b.adSrp, b.netUnitCost));
+    if (sortBy === 'gp%')      res = cmpNum(gpPct(a.adSrp, a.netUnitCost), gpPct(b.adSrp, b.netUnitCost));
+    return sortDir === 'asc' ? res : -res;
+  });
+  return base;
+}, [deals, sortBy, sortDir]);
+```
+
+Then change your map from `deals.map(...)` to `sortedDeals.map(...)`. (Your file currently maps `deals.map`. )
+
+---
+
+### 3) Add simple header filters (optional but handy)
+
+Right under the header row, insert a **filters row** with tiny inputs:
+
+```tsx
+const [filterText, setFilterText] = React.useState('');
+const [minGp, setMinGp] = React.useState<string>('');
+const [minGpPct, setMinGpPct] = React.useState<string>(''); // as % like "25"
+
+const filteredDeals = React.useMemo(() => {
+  return sortedDeals.filter(d => {
+    const textOk =
+      !filterText ||
+      String(d.itemCode).toLowerCase().includes(filterText.toLowerCase()) ||
+      String(d.description ?? '').toLowerCase().includes(filterText.toLowerCase());
+    const gpVal = gpDollars(d.adSrp, d.netUnitCost) ?? Number.NEGATIVE_INFINITY;
+    const gpPctVal = (gpPct(d.adSrp, d.netUnitCost) ?? -1) * 100;
+    const minGpOk = !minGp || gpVal >= Number(minGp);
+    const minGpPctOk = !minGpPct || gpPctVal >= Number(minGpPct);
+    return textOk && minGpOk && minGpPctOk;
+  });
+}, [sortedDeals, filterText, minGp, minGpPct]);
+```
+
+…and then render `filteredDeals.map(...)` instead of `sortedDeals.map(...)`.
+
+Add a filters row under your `<thead>`:
+
+```tsx
+<thead className="bg-muted sticky top-0 z-10">
+  <tr>
+    {/* existing header cells… plus two new for GP$ / GP% */}
+    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm"></th>
+    <th onClick={() => onSort('itemCode')} className="cursor-pointer py-3 px-4">Item Code</th>
+    <th className="py-3 px-4">Description</th>
+    <th className="py-3 px-4">Dept</th>
+    <th onClick={() => onSort('netUnitCost')} className="cursor-pointer py-3 px-4">Net Unit Cost</th>
+    <th onClick={() => onSort('adSrp')} className="cursor-pointer py-3 px-4">Ad SRP</th>
+    <th onClick={() => onSort('gp$')} className="cursor-pointer py-3 px-4">GP$</th>
+    <th onClick={() => onSort('gp%')} className="cursor-pointer py-3 px-4">GP%</th>
+    <th className="py-3 px-4">Score</th>
+    <th className="py-3 px-4">Components</th>
+    <th className="py-3 px-4">Actions</th>
+  </tr>
+
+  {/* filter row */}
+  <tr className="bg-muted/70">
+    <td className="py-2 px-4"></td>
+    <td className="py-2 px-4" colSpan={2}>
+      <input
+        className="w-full text-xs px-2 py-1 rounded border border-border bg-card"
+        placeholder="Filter item/description…"
+        value={filterText}
+        onChange={(e) => setFilterText(e.target.value)}
+      />
+    </td>
+    <td className="py-2 px-4"></td>
+    <td className="py-2 px-4"></td>
+    <td className="py-2 px-4"></td>
+    <td className="py-2 px-4">
+      <input
+        className="w-24 text-xs px-2 py-1 rounded border border-border bg-card text-right"
+        placeholder="Min GP$"
+        value={minGp}
+        onChange={(e) => setMinGp(e.target.value)}
+      />
+    </td>
+    <td className="py-2 px-4">
+      <input
+        className="w-24 text-xs px-2 py-1 rounded border border-border bg-card text-right"
+        placeholder="Min GP% (e.g. 25)"
+        value={minGpPct}
+        onChange={(e) => setMinGpPct(e.target.value)}
+      />
+    </td>
+    <td className="py-2 px-4"></td>
+    <td className="py-2 px-4"></td>
+    <td className="py-2 px-4"></td>
+  </tr>
+</thead>
+```
+
+> Note: Your header currently shows **Cost** and **Ad SRP**. Swap **Cost** → **Net Unit Cost** to align with the math you want (and with the details drawer’s margin calculation). The file presently renders `deal.cost`; change it to `deal.netUnitCost`.
+
+---
+
+### 4) Render the two new columns in the body
+
+Where each row is rendered:
+
+```tsx
+<td className="py-3 px-4 text-sm text-card-foreground">
+  {fmt(deal.netUnitCost)}
+</td>
+<td className="py-3 px-4 text-sm font-medium text-card-foreground">
+  {fmt(deal.adSrp)}
+</td>
+<td className="py-3 px-4 text-sm text-card-foreground">
+  {(() => {
+    const v = gpDollars(deal.adSrp, deal.netUnitCost);
+    return v == null ? '-' : `$${fmt(v)}`;
+  })()}
+</td>
+<td className="py-3 px-4 text-sm text-card-foreground">
+  {(() => {
+    const p = gpPct(deal.adSrp, deal.netUnitCost);
+    return p == null ? '-' : `${(p * 100).toFixed(1)}%`;
+  })()}
+</td>
+```
+
+---
+
+### 5) (Optional) Show the explicit math in a tooltip
+
+If you want the visible equation on hover:
+
+```tsx
+<td title={`${
+  fmt(deal.adSrp)
+} - ${fmt(deal.netUnitCost)} = $${fmt(gpDollars(deal.adSrp, deal.netUnitCost))}`}>
+  { /* GP$ cell from above */ }
+</td>
+```
+
+---
+
+### Why this aligns with your codebase
+
+* **Table hook-up**: your table is the right place to add sortable headers and new columns; it already renders `deal.cost`/`deal.adSrp` and score. We’re swapping to `netUnitCost` and adding GP columns.
+* **Correct math source**: your details drawer and scoring service already use **Net Unit Cost** for margin and “required SRP,” so these columns match the rest of the app.
+
+If you want, I can convert this into a tiny PR (git diff) against `client/src/components/DealsTable.tsx`.
