@@ -245,17 +245,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "No documents found for this week" });
       }
 
+      console.log(`Starting batch reprocess for ${documents.length} documents in week ${weekId}`);
+
       const results = [];
       let totalReparsed = 0;
       let totalErrors = 0;
+      let skippedDocs = 0;
+
+      // Check if AI is available for PDF/PPTX files
+      const needsAI = documents.some(doc => 
+        doc.mimetype === 'application/pdf' || 
+        doc.mimetype === 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      );
+      
+      if (needsAI && !aiService.canProcessDocument()) {
+        console.warn('AI service not available for PDF/PPTX parsing');
+      }
 
       for (const doc of documents) {
         try {
+          console.log(`Processing document: ${doc.filename} (${doc.mimetype})`);
+          
+          // Skip PDF/PPTX if AI is not available
+          if ((doc.mimetype === 'application/pdf' || 
+               doc.mimetype === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') && 
+              !aiService.canProcessDocument()) {
+            console.log(`Skipping ${doc.filename} - AI service required but not available`);
+            results.push({
+              file: doc.filename,
+              success: false,
+              error: 'AI service required for this file type but not available. Please add ANTHROPIC_API_KEY or OPENAI_API_KEY.',
+              skipped: true,
+            });
+            skippedDocs++;
+            continue;
+          }
+
           // Delete existing deals for this document
           await storage.deleteDealRowsByDocument(doc.id);
           
-          // Re-parse the document
-          const parseResult = await parsingService.parseFile(doc.storagePath, doc.filename, doc.mimetype);
+          // Re-parse the document with timeout
+          const parsePromise = parsingService.parseFile(doc.storagePath, doc.filename, doc.mimetype);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Parsing timeout after 30 seconds')), 30000)
+          );
+          
+          const parseResult = await Promise.race([parsePromise, timeoutPromise]) as any;
           
           // Update document metadata
           await storage.updateSourceDoc(doc.id, {
@@ -268,16 +303,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
           });
           
-          // Create new deal rows
-          const dealRows = parseResult.deals.map(deal => ({
-            ...deal,
-            adWeekId: doc.adWeekId,
-            sourceDocId: doc.id,
-            promoStart: deal.promoStart || null,
-            promoEnd: deal.promoEnd || null,
-          }));
-
-          if (dealRows.length > 0) {
+          // Create new deal rows if any were parsed
+          if (parseResult.deals && parseResult.deals.length > 0) {
+            const dealRows = parseResult.deals.map((deal: any) => ({
+              ...deal,
+              adWeekId: doc.adWeekId,
+              sourceDocId: doc.id,
+              promoStart: deal.promoStart || null,
+              promoEnd: deal.promoEnd || null,
+            }));
+            
             await storage.createDealRows(dealRows);
           }
 
@@ -286,31 +321,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
             success: true,
             reparsed: parseResult.parsedRows,
             total: parseResult.totalRows,
+            warnings: parseResult.errors,
           });
           
           totalReparsed += parseResult.parsedRows;
+          console.log(`Successfully processed ${doc.filename}: ${parseResult.parsedRows} deals`);
+          
         } catch (error) {
-          console.error(`Error re-parsing document ${doc.filename}:`, error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error(`Error re-parsing document ${doc.filename}:`, errorMessage);
+          
           results.push({
             file: doc.filename,
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: errorMessage,
           });
           totalErrors++;
         }
+        
+        // Small delay between documents to avoid overwhelming the system
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      res.json({
-        message: `Reprocessed ${documents.length} documents`,
+      const success = totalErrors === 0 && skippedDocs === 0;
+      const status = success ? 200 : 207; // 207 for partial success
+
+      console.log(`Batch reprocess complete: ${totalReparsed} deals parsed, ${totalErrors} errors, ${skippedDocs} skipped`);
+
+      res.status(status).json({
+        success,
+        message: success 
+          ? `Successfully reprocessed ${documents.length} documents`
+          : `Reprocessed with issues: ${totalErrors} errors, ${skippedDocs} skipped`,
         totalDocuments: documents.length,
         totalReparsed,
         totalErrors,
+        skippedDocs,
         results,
       });
       
     } catch (error) {
-      console.error("Error re-parsing all documents:", error);
-      res.status(500).json({ message: "Failed to re-parse documents" });
+      console.error("Error in batch re-parsing:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to re-parse documents",
+        error: error instanceof Error ? error.stack : undefined,
+      });
     }
   });
 

@@ -119,18 +119,33 @@ export default function InboxPage() {
         credentials: 'include',
       });
       
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to reprocess all documents');
+      const data = await response.json();
+      
+      // Handle partial success (207) or complete success (200)
+      if (response.status === 207) {
+        // Partial success - some documents had issues
+        return { ...data, partial: true };
+      } else if (!response.ok) {
+        throw new Error(data.message || 'Failed to reprocess all documents');
       }
       
-      return response.json();
+      return data;
     },
     onSuccess: (data) => {
-      toast({
-        title: "All Documents Reprocessed",
-        description: `Successfully reprocessed ${data.totalDocuments} documents with ${data.totalReparsed} deals extracted.`,
-      });
+      if (data.partial) {
+        // Partial success - show warning
+        toast({
+          title: "Partial Reprocess Complete",
+          description: `Processed ${data.totalDocuments} documents: ${data.totalReparsed} deals extracted, ${data.totalErrors} errors, ${data.skippedDocs} skipped.`,
+          variant: "default",
+        });
+      } else {
+        // Complete success
+        toast({
+          title: "All Documents Reprocessed",
+          description: `Successfully reprocessed ${data.totalDocuments} documents with ${data.totalReparsed} deals extracted.`,
+        });
+      }
       refetch(); // Refresh documents list
     },
     onError: (error: Error) => {
