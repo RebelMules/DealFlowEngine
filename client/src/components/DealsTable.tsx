@@ -147,8 +147,8 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
                     {deal.description}
                   </td>
                   <td className="py-3 px-4">
-                    <Badge className={cn("score-chip", getDeptChipClass(deal.dept))}>
-                      {getDeptEmoji(deal.dept)} {deal.dept}
+                    <Badge className={cn("score-chip px-2 py-1", getDeptChipClass(deal.dept))}>
+                      {getDeptEmoji(deal.dept)}
                     </Badge>
                   </td>
                   <td className="py-3 px-4 text-sm text-card-foreground">
