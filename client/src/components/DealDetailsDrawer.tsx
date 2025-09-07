@@ -87,8 +87,9 @@ export function DealDetailsDrawer({ dealId, deals, onClose }: DealDetailsDrawerP
   ];
 
   return (
-    <aside className="w-80 bg-card border-l border-border p-6 overflow-auto">
-      <div className="space-y-6">
+    <aside className="w-80 bg-card border-l border-border overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-auto p-6">
+        <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-card-foreground">Deal Details</h3>
@@ -276,6 +277,7 @@ export function DealDetailsDrawer({ dealId, deals, onClose }: DealDetailsDrawerP
               </div>
             ))}
           </div>
+        </div>
         </div>
       </div>
     </aside>
