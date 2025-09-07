@@ -622,8 +622,8 @@ class ParsingService {
       return undefined;
     };
     
-    const itemCode = findColumn(['ITEM CODE', 'CODE', 'ITEM NO', 'ORDER #', 'ITEM', 'SKU', 'PRODUCT CODE']) || '';
-    const description = findColumn(['DESCRIPTION', 'ITEM DESC', 'PRODUCT DESCRIPTION', 'NAME', 'PRODUCT NAME']) || '';
+    const itemCode = findColumn(['ITEM CODE', 'CODE', 'ITEM NO', 'ORDER #', 'ITEM', 'SKU', 'PRODUCT CODE', 'AWG ITEM', 'AWG']) || '';
+    const description = findColumn(['DESCRIPTION', 'ITEM DESC', 'PRODUCT DESCRIPTION', 'NAME', 'PRODUCT NAME', 'DELI', 'PACK/', 'PACK']) || '';
     const dept = findColumn(['DEPARTMENT', 'DEPT', 'RETAIL DEPT', 'CATEGORY']) || '';
     
     if (!itemCode || !description) {
@@ -635,7 +635,8 @@ class ParsingService {
       'COST', 'NET COST', 'UCOST', 'UNIT COST', 'CASE COST', 'WHOLESALE',
       'NETCOST', 'NET_COST', 'UNITCOST', 'UNIT_COST', 'CASECOST', 'CASE_COST',
       'WHOLESALECOST', 'WHOLESALE_COST', 'BASECOST', 'BASE_COST', 'BASE COST',
-      'ITEMCOST', 'ITEM_COST', 'ITEM COST', 'PRODUCTCOST', 'PRODUCT_COST', 'PRODUCT COST'
+      'ITEMCOST', 'ITEM_COST', 'ITEM COST', 'PRODUCTCOST', 'PRODUCT_COST', 'PRODUCT COST',
+      'COST/', 'EST.', 'EST', 'ESTIMATE', 'ESTIMATED COST'
     ]);
     
     const srpRaw = findColumn([
