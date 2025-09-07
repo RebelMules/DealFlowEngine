@@ -239,7 +239,7 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
 
   return (
     <TooltipProvider>
-      <div className="bg-card rounded-lg border border-border overflow-hidden h-full flex flex-col">
+      <div className="deals-table bg-card rounded-lg border border-border overflow-hidden h-full flex flex-col">
         {/* Scrollable table container with fixed height */}
         <div className="flex-1 relative overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)]">
           <table className="w-full table-fixed">

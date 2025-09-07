@@ -177,43 +177,43 @@
   @apply text-muted-foreground bg-gray-100;
 }
 
-/* Compact View Styles */
-.compact-view table {
+/* Compact View Styles - Only for deals table */
+.compact-view .deals-table table {
   font-size: 0.875rem; /* Smaller text */
 }
 
-.compact-view th {
+.compact-view .deals-table th {
   @apply py-2 px-3 text-xs;
 }
 
-.compact-view td {
+.compact-view .deals-table td {
   @apply py-2 px-3;
 }
 
-.compact-view .score-chip {
+.compact-view .deals-table .score-chip {
   @apply text-xs px-1.5 py-0.5;
 }
 
-.compact-view button {
+.compact-view .deals-table button {
   @apply h-7 w-7;
 }
 
-.compact-view button svg {
+.compact-view .deals-table button svg {
   width: 14px;
   height: 14px;
 }
 
-.compact-view .max-h-\[calc\(100vh-300px\)\] {
+.compact-view .deals-table .max-h-\[calc\(100vh-300px\)\] {
   max-height: calc(100vh - 250px); /* More visible rows */
 }
 
-/* Compact view for badges */
-.compact-view .badge {
+/* Compact view for badges in table only */
+.compact-view .deals-table .badge {
   @apply text-xs py-0 px-1.5;
 }
 
-/* Compact view input fields */
-.compact-view input {
+/* Compact view input fields in table filters only */
+.compact-view .deals-table input {
   @apply py-0.5 px-1.5;
   font-size: 0.75rem;
 }
