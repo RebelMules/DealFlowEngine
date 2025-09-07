@@ -21,22 +21,26 @@ export function WeekSelectorModal({
 }: WeekSelectorModalProps) {
   const [selectedYear] = useState(2025);
   
-  // Generate all 52 weeks of the year
+  // Generate all 52 weeks of the year (Wednesday to Tuesday)
   const getWeekDates = (year: number, weekNumber: number) => {
-    const simple = new Date(year, 0, 1 + (weekNumber - 1) * 7);
-    const dow = simple.getDay();
-    const ISOweekStart = new Date(simple);
-    if (dow <= 4) {
-      ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
-    } else {
-      ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-    }
+    // Calculate start and end dates for retail week (Wednesday to Tuesday)
+    const jan1 = new Date(year, 0, 1);
+    const jan1Day = jan1.getDay(); // 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, etc.
     
-    const weekEnd = new Date(ISOweekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
+    // Find the first Wednesday of the year
+    let firstWednesday = new Date(year, 0, 1);
+    const daysToWednesday = (3 - jan1Day + 7) % 7; // 3 = Wednesday
+    firstWednesday.setDate(1 + daysToWednesday);
+    
+    // Calculate the Wednesday for this week number
+    const weekStart = new Date(firstWednesday);
+    weekStart.setDate(firstWednesday.getDate() + (weekNumber - 1) * 7);
+    
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6); // Wednesday to Tuesday
     
     return {
-      start: ISOweekStart,
+      start: weekStart,
       end: weekEnd
     };
   };

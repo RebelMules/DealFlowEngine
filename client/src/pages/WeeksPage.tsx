@@ -67,24 +67,29 @@ export default function WeeksPage() {
     },
   });
 
-  // Helper function to generate week data for a specific week
+  // Helper function to generate week data for a specific week (Wednesday start)
   const generateWeekData = (year: number, weekNumber: number) => {
-    // Calculate start and end dates for the week
-    const getDateOfISOWeek = (year: number, week: number) => {
-      const simple = new Date(year, 0, 1 + (week - 1) * 7);
-      const dow = simple.getDay();
-      const ISOweekStart = simple;
-      if (dow <= 4) {
-        ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
-      } else {
-        ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-      }
-      return ISOweekStart;
+    // Calculate start and end dates for the week (Wednesday to Tuesday)
+    const getDateOfRetailWeek = (year: number, week: number) => {
+      // Start with January 1st of the year
+      const jan1 = new Date(year, 0, 1);
+      const jan1Day = jan1.getDay(); // 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, etc.
+      
+      // Find the first Wednesday of the year
+      let firstWednesday = new Date(year, 0, 1);
+      const daysToWednesday = (3 - jan1Day + 7) % 7; // 3 = Wednesday
+      firstWednesday.setDate(1 + daysToWednesday);
+      
+      // Calculate the Wednesday for this week number
+      const weekStart = new Date(firstWednesday);
+      weekStart.setDate(firstWednesday.getDate() + (week - 1) * 7);
+      
+      return weekStart;
     };
 
-    const weekStart = getDateOfISOWeek(year, weekNumber);
+    const weekStart = getDateOfRetailWeek(year, weekNumber);
     const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setDate(weekEnd.getDate() + 6); // Wednesday to Tuesday
 
     return {
       year,
