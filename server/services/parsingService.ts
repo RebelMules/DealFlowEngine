@@ -125,7 +125,8 @@ class ParsingService {
     
     // Deli and Bakery detection
     if ((lowerFilename.includes('deli') || lowerFilename.includes('bakery')) && 
-        (headerRow.includes('ITEM NO') || headerRow.includes('ITEM #') || headerRow.includes('ORDER #'))) {
+        (headerRow.includes('ITEM NO') || headerRow.includes('ITEM #') || headerRow.includes('ORDER #') ||
+         headerRow.includes('AWG ITEM') || headerRow.includes('AWG') || headerRow.includes('DELI'))) {
       return 'deli-bakery-planner';
     }
     
@@ -316,7 +317,9 @@ class ParsingService {
         row[headerMap['ITEM #']] || 
         row[headerMap['ORDER #']] || 
         row[headerMap['ITEM']] ||
-        row[headerMap['ITEM CODE']] || ''
+        row[headerMap['ITEM CODE']] ||
+        row[headerMap['AWG ITEM']] ||
+        row[headerMap['AWG']] || ''
       ).trim();
       
       // Look for description
@@ -324,7 +327,9 @@ class ParsingService {
         row[headerMap['ITEM DESC']] || 
         row[headerMap['DESCRIPTION']] || 
         row[headerMap['DESC']] ||
-        row[headerMap['ITEM DESCRIPTION']] || ''
+        row[headerMap['ITEM DESCRIPTION']] ||
+        row[headerMap['DELI']] ||
+        row[headerMap['PACK/']] || ''
       ).trim();
       
       // Skip empty rows or totals
@@ -340,7 +345,9 @@ class ParsingService {
             row[headerMap['COST']] || 
             row[headerMap['UCOST']] || 
             row[headerMap['NET COST']] ||
-            row[headerMap['UNIT COST']]
+            row[headerMap['UNIT COST']] ||
+            row[headerMap['COST/']] ||
+            row[headerMap['EST.']]
           ),
           srp: this.parseNumber(
             row[headerMap['SRP']] || 
