@@ -17,6 +17,8 @@ import { useKeyboard } from "@/hooks/useKeyboard";
 import { useWeeks } from "@/hooks/useWeeks";
 import { useToast } from "@/hooks/use-toast";
 import { Settings } from "@/components/Settings";
+import { WeekSelector } from "@/components/WeekSelector";
+import type { AdWeek } from "@shared/schema";
 
 interface LayoutProps {
   children: ReactNode;
@@ -42,6 +44,26 @@ export function Layout({ children }: LayoutProps) {
 
   const handleSettings = () => {
     setSettingsOpen(true);
+  };
+
+  const handleWeekChange = (week: AdWeek) => {
+    // Determine the current page type and navigate to the same page for the new week
+    if (location.includes('/inbox')) {
+      navigate(`/weeks/${week.id}/inbox`);
+    } else if (location.includes('/deals')) {
+      navigate(`/weeks/${week.id}/deals`);
+    } else if (location.includes('/exports')) {
+      navigate(`/weeks/${week.id}/exports`);
+    } else {
+      navigate(`/weeks/${week.id}/inbox`); // Default to inbox
+    }
+  };
+
+  const getPageType = (): 'inbox' | 'deals' | 'exports' | 'other' => {
+    if (location.includes('/inbox')) return 'inbox';
+    if (location.includes('/deals')) return 'deals';
+    if (location.includes('/exports')) return 'exports';
+    return 'other';
   };
   
   // Keyboard shortcuts
@@ -167,16 +189,12 @@ export function Layout({ children }: LayoutProps) {
               >
                 <Menu size={14} />
               </Button>
-              <div>
-                <h2 className="text-lg font-semibold text-card-foreground">
-                  {currentWeek ? `${location.includes('/inbox') ? 'Weekly Inbox' : 'Weekly Deal Bank'} - Week ${currentWeek.week}` : 'Deal Optimizer'}
-                </h2>
-                {currentWeek && (
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(currentWeek.start).toLocaleDateString()} - {new Date(currentWeek.end).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
+              <WeekSelector
+                weeks={weeks || []}
+                currentWeek={currentWeek}
+                onWeekChange={handleWeekChange}
+                pageType={getPageType()}
+              />
             </div>
             <div className="flex items-center space-x-2">
               <Button 
