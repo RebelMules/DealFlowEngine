@@ -67,6 +67,18 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
     }
   };
 
+  const getDeptEmoji = (dept: string) => {
+    switch (dept.toLowerCase()) {
+      case 'grocery': return '🛒';
+      case 'meat': return '🥩';
+      case 'produce': return '🥬';
+      case 'bakery': return '🥖';
+      case 'deli': return '🥪';
+      case 'deli/bakery': return '🥪';
+      default: return '📦';
+    }
+  };
+
   const getScoreInterpretation = (score: number) => {
     if (score >= 85) return { label: 'MUST INCLUDE', class: 'score-interpretation-must' };
     if (score >= 70) return { label: 'RECOMMENDED', class: 'score-interpretation-recommended' };
@@ -136,7 +148,7 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
                   </td>
                   <td className="py-3 px-4">
                     <Badge className={cn("score-chip", getDeptChipClass(deal.dept))}>
-                      {deal.dept}
+                      {getDeptEmoji(deal.dept)} {deal.dept}
                     </Badge>
                   </td>
                   <td className="py-3 px-4 text-sm text-card-foreground">
