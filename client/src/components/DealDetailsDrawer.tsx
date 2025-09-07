@@ -88,15 +88,19 @@ export function DealDetailsDrawer({ dealId, deals, onClose }: DealDetailsDrawerP
 
   return (
     <aside className="w-80 h-full bg-card border-l border-border overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-y-auto p-6 min-h-0">
-        <div className="space-y-6">
-        {/* Header */}
+      {/* Fixed Header */}
+      <div className="p-6 pb-4 border-b border-border">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-card-foreground">Deal Details</h3>
           <Button variant="ghost" size="sm" onClick={onClose} data-testid="close-drawer">
             <X size={16} />
           </Button>
         </div>
+      </div>
+      
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-6 pt-4">
+        <div className="space-y-6">
 
         {/* Deal Details */}
         <div>
