@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -9,12 +9,27 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Helper functions for formatting and calculations
+const fmt = (n?: number | null, d = 2) =>
+  n == null ? '-' : Number.isFinite(n) ? n.toFixed(d) : '-';
+
+const gpDollars = (adSrp?: number | null, netUnitCost?: number | null) =>
+  adSrp != null && netUnitCost != null ? adSrp - netUnitCost : null;
+
+const gpPct = (adSrp?: number | null, netUnitCost?: number | null) => {
+  if (adSrp == null || netUnitCost == null || adSrp === 0) return null;
+  return (adSrp - netUnitCost) / adSrp;
+};
+
+type SortKey = 'itemCode' | 'adSrp' | 'netUnitCost' | 'gp$' | 'gp%';
+
 interface Deal {
   id: string;
   itemCode: string;
   description: string;
   dept: string;
   cost?: number | null;
+  netUnitCost?: number | null;
   adSrp?: number | null;
   score?: {
     total: number;
@@ -37,6 +52,11 @@ interface DealsTableProps {
 
 export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTableProps) {
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<SortKey>('itemCode');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [filterText, setFilterText] = useState('');
+  const [minGp, setMinGp] = useState<string>('');
+  const [minGpPct, setMinGpPct] = useState<string>('');
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -55,6 +75,48 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
     }
     setSelectedDeals(newSelected);
   };
+
+  const onSort = (key: SortKey) => {
+    if (sortBy === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else {
+      setSortBy(key);
+      setSortDir('asc');
+    }
+  };
+
+  const cmpNum = (a?: number | null, b?: number | null) => {
+    const A = a == null ? Number.NEGATIVE_INFINITY : a;
+    const B = b == null ? Number.NEGATIVE_INFINITY : b;
+    return A - B;
+  };
+
+  const sortedDeals = useMemo(() => {
+    const base = [...deals];
+    base.sort((a, b) => {
+      let res = 0;
+      if (sortBy === 'itemCode') res = String(a.itemCode).localeCompare(String(b.itemCode));
+      if (sortBy === 'adSrp')    res = cmpNum(a.adSrp, b.adSrp);
+      if (sortBy === 'netUnitCost') res = cmpNum(a.netUnitCost, b.netUnitCost);
+      if (sortBy === 'gp$')      res = cmpNum(gpDollars(a.adSrp, a.netUnitCost), gpDollars(b.adSrp, b.netUnitCost));
+      if (sortBy === 'gp%')      res = cmpNum(gpPct(a.adSrp, a.netUnitCost), gpPct(b.adSrp, b.netUnitCost));
+      return sortDir === 'asc' ? res : -res;
+    });
+    return base;
+  }, [deals, sortBy, sortDir]);
+
+  const filteredDeals = useMemo(() => {
+    return sortedDeals.filter(d => {
+      const textOk =
+        !filterText ||
+        String(d.itemCode).toLowerCase().includes(filterText.toLowerCase()) ||
+        String(d.description ?? '').toLowerCase().includes(filterText.toLowerCase());
+      const gpVal = gpDollars(d.adSrp, d.netUnitCost) ?? Number.NEGATIVE_INFINITY;
+      const gpPctVal = (gpPct(d.adSrp, d.netUnitCost) ?? -1) * 100;
+      const minGpOk = !minGp || gpVal >= Number(minGp);
+      const minGpPctOk = !minGpPct || gpPctVal >= Number(minGpPct);
+      return textOk && minGpOk && minGpPctOk;
+    });
+  }, [sortedDeals, filterText, minGp, minGpPct]);
 
   const getDeptChipClass = (dept: string) => {
     switch (dept.toLowerCase()) {
@@ -101,12 +163,14 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
           <colgroup>
             <col className="w-12" /> {/* Checkbox */}
             <col className="w-28" /> {/* Item Code */}
-            <col className="w-80" /> {/* Description */}
+            <col className="w-64" /> {/* Description */}
             <col className="w-20" /> {/* Dept */}
-            <col className="w-24" /> {/* Cost */}
+            <col className="w-24" /> {/* Net Unit Cost */}
             <col className="w-24" /> {/* Ad SRP */}
-            <col className="w-40" /> {/* Score */}
-            <col className="w-52" /> {/* Components */}
+            <col className="w-24" /> {/* GP$ */}
+            <col className="w-24" /> {/* GP% */}
+            <col className="w-32" /> {/* Score */}
+            <col className="w-48" /> {/* Components */}
             <col className="w-32" /> {/* Actions */}
           </colgroup>
           
@@ -119,19 +183,59 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
                   data-testid="select-all-checkbox"
                 />
               </th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Item Code</th>
+              <th onClick={() => onSort('itemCode')} className="text-left py-3 px-4 font-medium text-muted-foreground text-sm cursor-pointer hover:text-foreground transition-colors">Item Code</th>
               <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Description</th>
               <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Dept</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Cost</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Ad SRP</th>
+              <th onClick={() => onSort('netUnitCost')} className="text-left py-3 px-4 font-medium text-muted-foreground text-sm cursor-pointer hover:text-foreground transition-colors">Net Unit Cost</th>
+              <th onClick={() => onSort('adSrp')} className="text-left py-3 px-4 font-medium text-muted-foreground text-sm cursor-pointer hover:text-foreground transition-colors">Ad SRP</th>
+              <th onClick={() => onSort('gp$')} className="text-left py-3 px-4 font-medium text-muted-foreground text-sm cursor-pointer hover:text-foreground transition-colors">GP$</th>
+              <th onClick={() => onSort('gp%')} className="text-left py-3 px-4 font-medium text-muted-foreground text-sm cursor-pointer hover:text-foreground transition-colors">GP%</th>
               <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Score</th>
               <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Components</th>
               <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Actions</th>
             </tr>
+
+            {/* Filter row */}
+            <tr className="bg-muted/70">
+              <td className="py-2 px-4"></td>
+              <td className="py-2 px-4" colSpan={2}>
+                <input
+                  className="w-full text-xs px-2 py-1 rounded border border-border bg-card"
+                  placeholder="Filter item/description…"
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  data-testid="filter-text-input"
+                />
+              </td>
+              <td className="py-2 px-4"></td>
+              <td className="py-2 px-4"></td>
+              <td className="py-2 px-4"></td>
+              <td className="py-2 px-4">
+                <input
+                  className="w-20 text-xs px-2 py-1 rounded border border-border bg-card text-right"
+                  placeholder="Min GP$"
+                  value={minGp}
+                  onChange={(e) => setMinGp(e.target.value)}
+                  data-testid="filter-min-gp-input"
+                />
+              </td>
+              <td className="py-2 px-4">
+                <input
+                  className="w-20 text-xs px-2 py-1 rounded border border-border bg-card text-right"
+                  placeholder="Min %"
+                  value={minGpPct}
+                  onChange={(e) => setMinGpPct(e.target.value)}
+                  data-testid="filter-min-gp-pct-input"
+                />
+              </td>
+              <td className="py-2 px-4"></td>
+              <td className="py-2 px-4"></td>
+              <td className="py-2 px-4"></td>
+            </tr>
           </thead>
           
           <tbody className="divide-y divide-border">
-            {deals.map((deal) => {
+            {filteredDeals.map((deal) => {
             const interpretation = deal.score ? getScoreInterpretation(deal.score.total) : null;
             
             return (
@@ -165,10 +269,22 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
                   </Badge>
                 </td>
                 <td className="py-3 px-4 text-sm text-card-foreground">
-                  {deal.cost ? `$${deal.cost.toFixed(2)}` : '-'}
+                  {deal.netUnitCost ? `$${fmt(deal.netUnitCost)}` : '-'}
                 </td>
                 <td className="py-3 px-4 text-sm font-medium text-card-foreground">
-                  {deal.adSrp ? `$${deal.adSrp.toFixed(2)}` : '-'}
+                  {deal.adSrp ? `$${fmt(deal.adSrp)}` : '-'}
+                </td>
+                <td className="py-3 px-4 text-sm text-card-foreground" title={`${fmt(deal.adSrp)} - ${fmt(deal.netUnitCost)} = $${fmt(gpDollars(deal.adSrp, deal.netUnitCost))}`}>
+                  {(() => {
+                    const v = gpDollars(deal.adSrp, deal.netUnitCost);
+                    return v == null ? '-' : `$${fmt(v)}`;
+                  })()}
+                </td>
+                <td className="py-3 px-4 text-sm text-card-foreground">
+                  {(() => {
+                    const p = gpPct(deal.adSrp, deal.netUnitCost);
+                    return p == null ? '-' : `${(p * 100).toFixed(1)}%`;
+                  })()}
                 </td>
                 <td className="py-3 px-4">
                   {deal.score ? (
@@ -243,7 +359,7 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
       {/* Status Bar */}
       <div className="flex items-center justify-between p-4 border-t border-border bg-background">
         <div className="text-sm text-muted-foreground">
-          Total: {deals.length} deals
+          Showing: {filteredDeals.length} of {deals.length} deals
         </div>
         <div className="text-sm text-muted-foreground">
           {selectedDeals.size > 0 && `${selectedDeals.size} selected`}
