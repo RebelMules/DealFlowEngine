@@ -15,9 +15,13 @@ interface Deal {
   description: string;
   dept: string;
   cost?: number | null;
+  netUnitCost?: number | null;
   srp?: number | null;
   adSrp?: number | null;
   mvmt?: number | null;
+  adScan?: number | null;
+  tprScan?: number | null;
+  edlcScan?: number | null;
   score?: {
     total: number;
     components: {
@@ -46,8 +50,24 @@ export function DealDetailsDrawer({ dealId, deals, onClose }: DealDetailsDrawerP
   }
 
   const getMarginPercent = () => {
-    if (!deal.cost || !deal.adSrp) return 0;
-    return ((deal.adSrp - deal.cost) / deal.adSrp) * 100;
+    if (!deal.netUnitCost || !deal.adSrp) return 0;
+    return ((deal.adSrp - deal.netUnitCost) / deal.adSrp) * 100;
+  };
+
+  const getRequiredSRP = () => {
+    if (!deal.netUnitCost) return null;
+    const marginFloors: Record<string, number> = {
+      Meat: 0.18,
+      Grocery: 0.22,
+      Produce: 0.25,
+      Bakery: 0.30,
+    };
+    const targetMargin = marginFloors[deal.dept] || 0.15;
+    return deal.netUnitCost / (1 - targetMargin);
+  };
+
+  const getTotalScan = () => {
+    return (deal.adScan || 0) + (deal.tprScan || 0) + (deal.edlcScan || 0);
   };
 
   const scoreComponents = [
@@ -91,6 +111,12 @@ export function DealDetailsDrawer({ dealId, deals, onClose }: DealDetailsDrawerP
               </span>
             </div>
             <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Net Unit Cost:</span>
+              <span className="text-sm font-medium text-card-foreground">
+                {deal.netUnitCost ? `$${deal.netUnitCost.toFixed(2)}` : 'N/A'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Ad SRP:</span>
               <span className="text-sm font-medium text-card-foreground">
                 {deal.adSrp ? `$${deal.adSrp.toFixed(2)}` : 'N/A'}
@@ -100,6 +126,36 @@ export function DealDetailsDrawer({ dealId, deals, onClose }: DealDetailsDrawerP
               <span className="text-sm text-muted-foreground">Margin:</span>
               <span className="text-sm text-chart-2 font-medium">
                 {getMarginPercent().toFixed(1)}%
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Required SRP:</span>
+              <span className="text-sm text-card-foreground">
+                {getRequiredSRP() ? `$${getRequiredSRP()!.toFixed(2)}` : 'N/A'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Total Scan:</span>
+              <span className="text-sm text-card-foreground">
+                {getTotalScan().toFixed(0)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Ad Scan:</span>
+              <span className="text-xs text-muted-foreground">
+                {deal.adScan ? deal.adScan.toFixed(0) : '0'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">TPR Scan:</span>
+              <span className="text-xs text-muted-foreground">
+                {deal.tprScan ? deal.tprScan.toFixed(0) : '0'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">EDLC Scan:</span>
+              <span className="text-xs text-muted-foreground">
+                {deal.edlcScan ? deal.edlcScan.toFixed(0) : '0'}
               </span>
             </div>
             <div className="flex justify-between items-center">

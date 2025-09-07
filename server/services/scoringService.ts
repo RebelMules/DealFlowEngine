@@ -101,6 +101,26 @@ class ScoringService {
     return 50 + (marginPct - floorPct) / (0.30 - floorPct) * 50;
   }
 
+  // Calculate required SRP to achieve target margin percentage for a given department
+  calculateRequiredSRP(deal: DealRow, targetMarginPct?: number): number | null {
+    if (!deal.netUnitCost) return null;
+    
+    const targetMargin = targetMarginPct || this.marginFloors[deal.dept] || 0.15;
+    // Required SRP = Net Unit Cost / (1 - Target Margin)
+    return deal.netUnitCost / (1 - targetMargin);
+  }
+
+  // Calculate actual margin percentage
+  calculateActualMargin(deal: DealRow): number | null {
+    if (!deal.netUnitCost || !deal.adSrp) return null;
+    return (deal.adSrp - deal.netUnitCost) / deal.adSrp;
+  }
+
+  // Calculate total scan value (ADSCAN + TPRSCAN + EDLC SCAN)
+  calculateTotalScan(deal: DealRow): number {
+    return (deal.adScan || 0) + (deal.tprScan || 0) + (deal.edlcScan || 0);
+  }
+
   private scoreVelocity(deal: DealRow): number {
     const mvmt = deal.mvmt || 1.0;
     
