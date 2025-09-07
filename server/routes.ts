@@ -235,6 +235,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Re-parse all documents for a week
+  app.post("/api/weeks/:id/documents/reparse-all", async (req, res) => {
+    try {
+      const weekId = req.params.id;
+      const documents = await storage.getSourceDocsByWeek(weekId);
+      
+      if (documents.length === 0) {
+        return res.status(404).json({ message: "No documents found for this week" });
+      }
+
+      const results = [];
+      let totalReparsed = 0;
+      let totalErrors = 0;
+
+      for (const doc of documents) {
+        try {
+          // Delete existing deals for this document
+          await storage.deleteDealRowsByDocument(doc.id);
+          
+          // Re-parse the document
+          const parseResult = await parsingService.parseFile(doc.storagePath, doc.filename, doc.mimetype);
+          
+          // Update document metadata
+          await storage.updateSourceDoc(doc.id, {
+            meta: {
+              parsedRows: parseResult.parsedRows,
+              totalRows: parseResult.totalRows,
+              errors: parseResult.errors,
+              detectedType: parseResult.detectedType,
+              status: parseResult.errors.length > 0 ? 'parsed_with_errors' : 'parsed',
+            },
+          });
+          
+          // Create new deal rows
+          const dealRows = parseResult.deals.map(deal => ({
+            ...deal,
+            adWeekId: doc.adWeekId,
+            sourceDocId: doc.id,
+            promoStart: deal.promoStart || null,
+            promoEnd: deal.promoEnd || null,
+          }));
+
+          if (dealRows.length > 0) {
+            await storage.createDealRows(dealRows);
+          }
+
+          results.push({
+            file: doc.filename,
+            success: true,
+            reparsed: parseResult.parsedRows,
+            total: parseResult.totalRows,
+          });
+          
+          totalReparsed += parseResult.parsedRows;
+        } catch (error) {
+          console.error(`Error re-parsing document ${doc.filename}:`, error);
+          results.push({
+            file: doc.filename,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+          totalErrors++;
+        }
+      }
+
+      res.json({
+        message: `Reprocessed ${documents.length} documents`,
+        totalDocuments: documents.length,
+        totalReparsed,
+        totalErrors,
+        results,
+      });
+      
+    } catch (error) {
+      console.error("Error re-parsing all documents:", error);
+      res.status(500).json({ message: "Failed to re-parse documents" });
+    }
+  });
+
   // Re-parse a single document
   app.post("/api/documents/:id/reparse", async (req, res) => {
     try {

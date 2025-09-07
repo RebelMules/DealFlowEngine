@@ -110,6 +110,38 @@ export default function InboxPage() {
     },
   });
 
+  // Mutation for reprocessing all documents
+  const reprocessAllDocumentsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/weeks/${weekId}/documents/reparse-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to reprocess all documents');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "All Documents Reprocessed",
+        description: `Successfully reprocessed ${data.totalDocuments} documents with ${data.totalReparsed} deals extracted.`,
+      });
+      refetch(); // Refresh documents list
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Batch Reprocess Failed",
+        description: error.message || "Failed to reprocess all documents",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Delete document mutation
   const deleteDocumentMutation = useMutation({
     mutationFn: async (docId: string) => {
@@ -255,10 +287,25 @@ export default function InboxPage() {
         <div className="mb-3">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-card-foreground">Source Documents</h2>
-            <Button size="sm" onClick={() => setUploadModalOpen(true)} data-testid="upload-files-button">
-              <Upload size={14} className="mr-1" />
-              Upload Files
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                size="sm" 
+                variant="secondary"
+                onClick={() => reprocessAllDocumentsMutation.mutate()}
+                disabled={reprocessAllDocumentsMutation.isPending || documents.length === 0}
+                data-testid="reprocess-all-button"
+              >
+                <RefreshCw size={14} className={cn(
+                  "mr-1",
+                  reprocessAllDocumentsMutation.isPending && "animate-spin"
+                )} />
+                {reprocessAllDocumentsMutation.isPending ? "Reprocessing..." : "Reprocess All"}
+              </Button>
+              <Button size="sm" onClick={() => setUploadModalOpen(true)} data-testid="upload-files-button">
+                <Upload size={14} className="mr-1" />
+                Upload Files
+              </Button>
+            </div>
           </div>
 
           {/* Upload Modal */}
