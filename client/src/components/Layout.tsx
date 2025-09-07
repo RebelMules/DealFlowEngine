@@ -29,7 +29,16 @@ export function Layout({ children }: LayoutProps) {
   const { data: weeks } = useWeeks();
   const { toast } = useToast();
   
-  const currentWeek = weeks?.[0]; // Most recent week
+  // Get the week from the current URL path
+  const getActiveWeek = () => {
+    const weekIdMatch = location.match(/\/weeks\/([^\/]+)/);
+    if (weekIdMatch && weeks) {
+      return weeks.find(week => week.id === weekIdMatch[1]);
+    }
+    return weeks?.[0]; // Fallback to most recent week
+  };
+  
+  const currentWeek = getActiveWeek();
 
   const handleSettings = () => {
     setSettingsOpen(true);
