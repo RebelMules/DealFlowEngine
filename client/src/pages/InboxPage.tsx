@@ -14,7 +14,8 @@ import {
   Settings,
   RefreshCw,
   AlertTriangle,
-  Trash2
+  Trash2,
+  MoreVertical
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -31,6 +32,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Extended type for documents with parsing info stored in meta field
 interface DocumentWithMeta extends SourceDoc {
@@ -322,56 +330,62 @@ export default function InboxPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-1 ml-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      title="Open Original"
-                      onClick={() => {
-                        // Open the original file in a new tab
-                        window.open(`/api/documents/${doc.id}/download`, '_blank');
-                      }}
-                      data-testid={`open-original-${doc.id}`}
-                    >
-                      <ExternalLink size={14} />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      title="Map Columns"
-                      onClick={() => {
-                        setColumnMappingModal({
-                          isOpen: true,
-                          documentId: doc.id,
-                          documentName: doc.filename,
-                        });
-                      }}
-                      data-testid={`map-columns-${doc.id}`}
-                    >
-                      <Settings size={14} />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      title="Reprocess"
-                      onClick={() => reprocessDocumentMutation.mutate(doc.id)}
-                      disabled={reprocessDocumentMutation.isPending}
-                      data-testid={`reprocess-${doc.id}`}
-                    >
-                      <RefreshCw size={14} className={reprocessDocumentMutation.isPending ? "animate-spin" : ""} />
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      title="Delete"
-                      onClick={() => {
-                        setDocumentToDelete({ id: doc.id, name: doc.filename });
-                        setDeleteDialogOpen(true);
-                      }}
-                      data-testid={`delete-${doc.id}`}
-                    >
-                      <Trash2 size={14} />
-                    </Button>
+                  <div className="flex items-center ml-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          data-testid={`doc-actions-${doc.id}`}
+                        >
+                          <MoreVertical size={14} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            window.open(`/api/documents/${doc.id}/download`, '_blank');
+                          }}
+                          data-testid={`open-original-${doc.id}`}
+                        >
+                          <ExternalLink size={14} className="mr-2" />
+                          Open Original
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setColumnMappingModal({
+                              isOpen: true,
+                              documentId: doc.id,
+                              documentName: doc.filename,
+                            });
+                          }}
+                          data-testid={`map-columns-${doc.id}`}
+                        >
+                          <Settings size={14} className="mr-2" />
+                          Map Columns
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => reprocessDocumentMutation.mutate(doc.id)}
+                          disabled={reprocessDocumentMutation.isPending}
+                          data-testid={`reprocess-${doc.id}`}
+                        >
+                          <RefreshCw size={14} className={reprocessDocumentMutation.isPending ? "animate-spin mr-2" : "mr-2"} />
+                          Reprocess
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setDocumentToDelete({ id: doc.id, name: doc.filename });
+                            setDeleteDialogOpen(true);
+                          }}
+                          className="text-destructive focus:text-destructive"
+                          data-testid={`delete-${doc.id}`}
+                        >
+                          <Trash2 size={14} className="mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </CardContent>
