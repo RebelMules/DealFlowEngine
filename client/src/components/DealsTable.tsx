@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Eye, 
   ExternalLink, 
@@ -95,132 +94,130 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
 
   return (
     <div className="bg-card rounded-lg border border-border overflow-hidden h-full flex flex-col">
-      <div className="flex-1 overflow-hidden">
-        <table className="w-full">
+      <div className="flex-1 overflow-auto">
+        <table className="w-full relative">
           <thead className="bg-muted sticky top-0 z-10">
             <tr>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">
                 <Checkbox
                   checked={selectedDeals.size === deals.length && deals.length > 0}
                   onCheckedChange={handleSelectAll}
                   data-testid="select-all-checkbox"
                 />
               </th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Item Code</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Description</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Dept</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Cost</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Ad SRP</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Score</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Components</th>
-              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Actions</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Item Code</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Description</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Dept</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Cost</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Ad SRP</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Score</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Components</th>
+              <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Actions</th>
             </tr>
           </thead>
-        </table>
-        <ScrollArea className="h-[calc(100vh-350px)]">
-          <table className="w-full">
-            <tbody className="divide-y divide-border">
-              {deals.map((deal) => {
-              const interpretation = deal.score ? getScoreInterpretation(deal.score.total) : null;
-              
-              return (
-                <tr 
-                  key={deal.id} 
-                  className={cn(
-                    "table-row-hover transition-colors cursor-pointer",
-                    selectedDealId === deal.id && "bg-accent/50"
-                  )}
-                  onClick={() => onSelectDeal(deal.id)}
-                  data-testid={`deal-row-${deal.id}`}
-                >
-                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selectedDeals.has(deal.id)}
-                      onCheckedChange={(checked) => handleSelectDeal(deal.id, checked as boolean)}
-                      data-testid={`select-deal-${deal.id}`}
-                    />
-                  </td>
-                  <td className="py-3 px-4 font-mono text-sm text-card-foreground">
-                    {deal.itemCode}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-card-foreground max-w-xs truncate">
+          <tbody className="divide-y divide-border">
+            {deals.map((deal) => {
+            const interpretation = deal.score ? getScoreInterpretation(deal.score.total) : null;
+            
+            return (
+              <tr 
+                key={deal.id} 
+                className={cn(
+                  "table-row-hover transition-colors cursor-pointer",
+                  selectedDealId === deal.id && "bg-accent/50"
+                )}
+                onClick={() => onSelectDeal(deal.id)}
+                data-testid={`deal-row-${deal.id}`}
+              >
+                <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedDeals.has(deal.id)}
+                    onCheckedChange={(checked) => handleSelectDeal(deal.id, checked as boolean)}
+                    data-testid={`select-deal-${deal.id}`}
+                  />
+                </td>
+                <td className="py-3 px-4 font-mono text-sm text-card-foreground whitespace-nowrap">
+                  {deal.itemCode}
+                </td>
+                <td className="py-3 px-4 text-sm text-card-foreground max-w-xs truncate">
+                  <div className="truncate" title={deal.description}>
                     {deal.description}
-                  </td>
-                  <td className="py-3 px-4">
-                    <Badge className={cn("score-chip px-2 py-1", getDeptChipClass(deal.dept))}>
-                      {getDeptEmoji(deal.dept)}
-                    </Badge>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-card-foreground">
-                    {deal.cost ? `$${deal.cost.toFixed(2)}` : '-'}
-                  </td>
-                  <td className="py-3 px-4 text-sm font-medium text-card-foreground">
-                    {deal.adSrp ? `$${deal.adSrp.toFixed(2)}` : '-'}
-                  </td>
-                  <td className="py-3 px-4">
-                    {deal.score ? (
-                      <div className="flex items-center space-x-2">
-                        <span className={cn("text-lg", getScoreColor(deal.score.total))}>
-                          {deal.score.total.toFixed(1)}
-                        </span>
-                        <Badge className={cn("score-chip text-xs", interpretation?.class)}>
-                          {interpretation?.label}
-                        </Badge>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">Not scored</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4">
-                    {deal.score ? (
-                      <div className="flex flex-wrap gap-1">
-                        <Badge className="score-chip score-chip-margin">
-                          Margin: {deal.score.components.margin.toFixed(0)}
-                        </Badge>
-                        <Badge className="score-chip score-chip-velocity">
-                          Velocity: {deal.score.components.velocity.toFixed(0)}
-                        </Badge>
-                        <Badge className="score-chip score-chip-funding">
-                          Funding: {deal.score.components.funding.toFixed(0)}
-                        </Badge>
-                      </div>
-                    ) : null}
-                  </td>
-                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                  </div>
+                </td>
+                <td className="py-3 px-4 whitespace-nowrap">
+                  <Badge className={cn("score-chip px-2 py-1", getDeptChipClass(deal.dept))}>
+                    {getDeptEmoji(deal.dept)}
+                  </Badge>
+                </td>
+                <td className="py-3 px-4 text-sm text-card-foreground whitespace-nowrap">
+                  {deal.cost ? `$${deal.cost.toFixed(2)}` : '-'}
+                </td>
+                <td className="py-3 px-4 text-sm font-medium text-card-foreground whitespace-nowrap">
+                  {deal.adSrp ? `$${deal.adSrp.toFixed(2)}` : '-'}
+                </td>
+                <td className="py-3 px-4 whitespace-nowrap">
+                  {deal.score ? (
                     <div className="flex items-center space-x-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => onSelectDeal(deal.id)}
-                        title="View Details"
-                        data-testid={`view-deal-${deal.id}`}
-                      >
-                        <Eye size={16} className="text-muted-foreground hover:text-primary" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        title="Open Original"
-                        data-testid={`open-original-${deal.id}`}
-                      >
-                        <ExternalLink size={16} className="text-muted-foreground hover:text-primary" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        title="Lock Item"
-                        data-testid={`lock-deal-${deal.id}`}
-                      >
-                        <Lock size={16} className="text-muted-foreground hover:text-primary" />
-                      </Button>
+                      <span className={cn("text-lg", getScoreColor(deal.score.total))}>
+                        {deal.score.total.toFixed(1)}
+                      </span>
+                      <Badge className={cn("score-chip text-xs", interpretation?.class)}>
+                        {interpretation?.label}
+                      </Badge>
                     </div>
-                  </td>
-                </tr>
-              );
-              })}
-            </tbody>
-          </table>
-        </ScrollArea>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">Not scored</span>
+                  )}
+                </td>
+                <td className="py-3 px-4">
+                  {deal.score ? (
+                    <div className="flex flex-wrap gap-1 min-w-[200px]">
+                      <Badge className="score-chip score-chip-margin">
+                        Margin: {deal.score.components.margin.toFixed(0)}
+                      </Badge>
+                      <Badge className="score-chip score-chip-velocity">
+                        Velocity: {deal.score.components.velocity.toFixed(0)}
+                      </Badge>
+                      <Badge className="score-chip score-chip-funding">
+                        Funding: {deal.score.components.funding.toFixed(0)}
+                      </Badge>
+                    </div>
+                  ) : null}
+                </td>
+                <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => onSelectDeal(deal.id)}
+                      title="View Details"
+                      data-testid={`view-deal-${deal.id}`}
+                    >
+                      <Eye size={16} className="text-muted-foreground hover:text-primary" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      title="Open Original"
+                      data-testid={`open-original-${deal.id}`}
+                    >
+                      <ExternalLink size={16} className="text-muted-foreground hover:text-primary" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      title="Lock Item"
+                      data-testid={`lock-deal-${deal.id}`}
+                    >
+                      <Lock size={16} className="text-muted-foreground hover:text-primary" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            );
+            })}
+          </tbody>
+        </table>
       </div>
 
       {/* Status Bar */}
