@@ -18,6 +18,7 @@ import {
   ArrowDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { DealRow, Score, ScoreComponents } from "@shared/schema";
 
 // Helper functions for formatting and calculations
 const fmt = (n?: number | null, d = 2) =>
@@ -49,7 +50,7 @@ const getRequiredSRP = (netUnitCost?: number | null, dept?: string | null, targe
 };
 
 // Calculate effective deal pricing for BOGO
-const getEffectiveSRP = (deal: Deal) => {
+const getEffectiveSRP = (deal: DealWithScore) => {
   const isBOGO = deal.description?.toLowerCase().includes('bogo') || 
                  deal.description?.toLowerCase().includes('buy one get one');
   
@@ -61,7 +62,7 @@ const getEffectiveSRP = (deal: Deal) => {
 };
 
 // Check if item is weight-based
-const isWeightBased = (deal: Deal) => {
+const isWeightBased = (deal: DealWithScore) => {
   const desc = deal.description?.toLowerCase() || '';
   const size = deal.size?.toLowerCase() || '';
   return desc.includes('/lb') || desc.includes('per lb') || 
@@ -70,41 +71,12 @@ const isWeightBased = (deal: Deal) => {
 
 type SortKey = 'itemCode' | 'adSrp' | 'netUnitCost' | 'gp$' | 'gp%' | 'reqSrp' | 'scan' | 'score';
 
-interface Deal {
-  id: string;
-  itemCode: string;
-  description: string;
-  dept: string;
-  upc?: string | null;
-  cost?: number | null;
-  netUnitCost?: number | null;
-  srp?: number | null;
-  adSrp?: number | null;
-  vendorFundingPct?: number | null;
-  mvmt?: number | null;
-  adScan?: number | null;
-  tprScan?: number | null;
-  edlcScan?: number | null;
-  competitorPrice?: number | null;
-  pack?: string | null;
-  size?: string | null;
-  promoStart?: Date | null;
-  promoEnd?: Date | null;
-  score?: {
-    total: number;
-    components: {
-      margin: number;
-      velocity: number;
-      funding: number;
-      theme: number;
-      timing: number;
-      competitive: number;
-    };
-  };
+interface DealWithScore extends DealRow {
+  score?: Score;
 }
 
 interface DealsTableProps {
-  deals: Deal[];
+  deals: DealWithScore[];
   onSelectDeal: (dealId: string) => void;
   selectedDealId: string | null;
 }
@@ -164,7 +136,7 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
     return A - B;
   };
 
-  const getTotalScan = (deal: Deal) => {
+  const getTotalScan = (deal: DealWithScore) => {
     return (deal.adScan || 0) + (deal.tprScan || 0) + (deal.edlcScan || 0);
   };
 
@@ -555,70 +527,73 @@ export function DealsTable({ deals, onSelectDeal, selectedDealId }: DealsTablePr
                     )}
                   </td>
                   <td className="py-3 px-4">
-                    {deal.score ? (
-                      <div className="flex flex-wrap gap-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge className="score-chip score-chip-margin text-xs cursor-help">
-                              M: {deal.score.components.margin.toFixed(0)}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Margin ({(SCORING_WEIGHTS.margin * 100).toFixed(0)}% weight): {deal.score.components.margin.toFixed(1)}
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge className="score-chip score-chip-velocity text-xs cursor-help">
-                              V: {deal.score.components.velocity.toFixed(0)}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Velocity ({(SCORING_WEIGHTS.velocity * 100).toFixed(0)}% weight): {deal.score.components.velocity.toFixed(1)}
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge className="score-chip score-chip-funding text-xs cursor-help">
-                              F: {deal.score.components.funding.toFixed(0)}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Funding ({(SCORING_WEIGHTS.funding * 100).toFixed(0)}% weight): {deal.score.components.funding.toFixed(1)}
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge className="score-chip score-chip-theme text-xs cursor-help">
-                              T: {deal.score.components.theme.toFixed(0)}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Theme ({(SCORING_WEIGHTS.theme * 100).toFixed(0)}% weight): {deal.score.components.theme.toFixed(1)}
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge className="score-chip score-chip-timing text-xs cursor-help">
-                              Ti: {deal.score.components.timing.toFixed(0)}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Timing ({(SCORING_WEIGHTS.timing * 100).toFixed(0)}% weight): {deal.score.components.timing.toFixed(1)}
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge className="score-chip score-chip-competitive text-xs cursor-help">
-                              C: {deal.score.components.competitive.toFixed(0)}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Competitive ({(SCORING_WEIGHTS.competitive * 100).toFixed(0)}% weight): {deal.score.components.competitive.toFixed(1)}
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    ) : (
+                    {deal.score ? (() => {
+                      const components = (deal.score.components || {}) as ScoreComponents;
+                      return (
+                        <div className="flex flex-wrap gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge className="score-chip score-chip-margin text-xs cursor-help">
+                                M: {(components.margin || 0).toFixed(0)}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Margin ({(SCORING_WEIGHTS.margin * 100).toFixed(0)}% weight): {(components.margin || 0).toFixed(1)}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge className="score-chip score-chip-velocity text-xs cursor-help">
+                                V: {(components.velocity || 0).toFixed(0)}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Velocity ({(SCORING_WEIGHTS.velocity * 100).toFixed(0)}% weight): {(components.velocity || 0).toFixed(1)}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge className="score-chip score-chip-funding text-xs cursor-help">
+                                F: {(components.funding || 0).toFixed(0)}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Funding ({(SCORING_WEIGHTS.funding * 100).toFixed(0)}% weight): {(components.funding || 0).toFixed(1)}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge className="score-chip score-chip-theme text-xs cursor-help">
+                                T: {(components.theme || 0).toFixed(0)}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Theme ({(SCORING_WEIGHTS.theme * 100).toFixed(0)}% weight): {(components.theme || 0).toFixed(1)}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge className="score-chip score-chip-timing text-xs cursor-help">
+                                Ti: {(components.timing || 0).toFixed(0)}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Timing ({(SCORING_WEIGHTS.timing * 100).toFixed(0)}% weight): {(components.timing || 0).toFixed(1)}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge className="score-chip score-chip-competitive text-xs cursor-help">
+                                C: {(components.competitive || 0).toFixed(0)}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Competitive ({(SCORING_WEIGHTS.competitive * 100).toFixed(0)}% weight): {(components.competitive || 0).toFixed(1)}
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      );
+                    })() : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </td>

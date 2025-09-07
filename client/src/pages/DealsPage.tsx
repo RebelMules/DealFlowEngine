@@ -221,7 +221,8 @@ export default function DealsPage() {
         <DealDetailsDrawer 
           dealId={selectedDeal}
           deals={deals || []}
-          onClose={() => setSelectedDeal(null)}
+          open={!!selectedDeal}
+          onOpenChange={(open) => !open && setSelectedDeal(null)}
         />
       </div>
 
