@@ -295,12 +295,124 @@ class ParsingService {
   }
 
   private parseProducePlanner(data: any[][]): ParsingResult {
-    // Implementation for produce planner format
+    const deals: ParsedDeal[] = [];
+    const errors: string[] = [];
+    let headerRowIndex = -1;
+    let headerMap: Record<string, number> = {};
+    
+    // Find header row using intelligent detection for produce files
+    headerRowIndex = this.findHeaderRow(data, ['ITEM #', 'ITEM NO', 'ORDER #', 'PRODUCT #', 'PLU', 'SKU']);
+    
+    if (headerRowIndex === -1) {
+      errors.push('Could not find header row with item identifier (ITEM #, PLU, etc.)');
+      return { deals, totalRows: data.length, parsedRows: 0, errors, detectedType: 'produce-planner' };
+    }
+    
+    // Build header map
+    const headers = data[headerRowIndex];
+    headers.forEach((header, index) => {
+      const cleanHeader = String(header || '').trim().toUpperCase();
+      headerMap[cleanHeader] = index;
+    });
+    
+    // Required columns for produce
+    const requiredCols = [];
+    const itemCodeCol = headerMap['ITEM #'] || headerMap['ITEM NO'] || headerMap['PLU'] || headerMap['PRODUCT #'] || headerMap['ORDER #'];
+    const descCol = headerMap['DESCRIPTION'] || headerMap['ITEM DESC'] || headerMap['PRODUCT NAME'] || headerMap['NAME'];
+    
+    if (!itemCodeCol && !descCol) {
+      errors.push('Missing required columns: Item identifier and Description');
+      return { deals, totalRows: data.length, parsedRows: 0, errors, detectedType: 'produce-planner' };
+    }
+    
+    // Parse data rows
+    for (let i = headerRowIndex + 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row || row.length === 0) continue;
+      
+      // Get item code from various possible columns
+      const itemCode = String(
+        row[headerMap['ITEM #']] || 
+        row[headerMap['ITEM NO']] || 
+        row[headerMap['PLU']] || 
+        row[headerMap['PRODUCT #']] ||
+        row[headerMap['ORDER #']] || ''
+      ).trim();
+      
+      // Get description
+      const description = String(
+        row[headerMap['DESCRIPTION']] || 
+        row[headerMap['ITEM DESC']] || 
+        row[headerMap['PRODUCT NAME']] ||
+        row[headerMap['NAME']] || ''
+      ).trim();
+      
+      // Skip if no item code or description
+      if (!itemCode || !description || description.toLowerCase().includes('total')) continue;
+      
+      try {
+        const deal: ParsedDeal = {
+          itemCode,
+          description,
+          dept: 'Produce', // Default for produce planners
+          upc: this.cleanUPC(String(row[headerMap['UPC']] || row[headerMap['PLU']] || '')),
+          cost: this.parseNumber(
+            row[headerMap['COST']] || 
+            row[headerMap['UCOST']] || 
+            row[headerMap['UNIT COST']] ||
+            row[headerMap['NET COST']]
+          ),
+          netUnitCost: this.parseNumber(row[headerMap['NET UNIT COST']] || row[headerMap['NET COST']]),
+          srp: this.parseNumber(
+            row[headerMap['SRP']] || 
+            row[headerMap['REGSRP']] || 
+            row[headerMap['REGULAR PRICE']] ||
+            row[headerMap['RETAIL']]
+          ),
+          adSrp: this.parseNumber(
+            row[headerMap['AD SRP']] || 
+            row[headerMap['AD PRICE']] || 
+            row[headerMap['SALE PRICE']] ||
+            row[headerMap['PROMO PRICE']]
+          ),
+          vendorFundingPct: this.parsePercentage(
+            row[headerMap['AMAP']] || 
+            row[headerMap['FUNDING']] ||
+            row[headerMap['VENDOR FUNDING']]
+          ),
+          mvmt: this.parseNumber(
+            row[headerMap['MVMT']] || 
+            row[headerMap['MOVEMENT']] ||
+            row[headerMap['VELOCITY']]
+          ),
+          adScan: this.parseNumber(row[headerMap['ADSCAN']] || row[headerMap['AD SCAN']]),
+          tprScan: this.parseNumber(row[headerMap['TPRSCAN']] || row[headerMap['TPR SCAN']]),
+          edlcScan: this.parseNumber(row[headerMap['EDLC SCAN']] || row[headerMap['EDLCSCAN']]),
+          pack: String(row[headerMap['PACK']] || row[headerMap['PK']] || '').trim() || undefined,
+          size: String(row[headerMap['SIZE']] || row[headerMap['SZ']] || '').trim() || undefined,
+        };
+        
+        // Parse promo dates if present
+        const promoDates = String(row[headerMap['PROMO DATES']] || row[headerMap['TPR DATES']] || '');
+        if (promoDates) {
+          const dateMatch = promoDates.match(/(\d{2}\/\d{2}\/\d{4}).*?(\d{2}\/\d{2}\/\d{4})/);
+          if (dateMatch) {
+            deal.promoStart = new Date(dateMatch[1]);
+            deal.promoEnd = new Date(dateMatch[2]);
+          }
+        }
+        
+        deals.push(deal);
+      } catch (error) {
+        errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+    
     return {
-      deals: [],
-      totalRows: data.length,
-      parsedRows: 0,
-      errors: ['Produce planner parsing not yet implemented'],
+      deals,
+      totalRows: data.length - headerRowIndex - 1,
+      parsedRows: deals.length,
+      errors: deals.length === 0 ? ['No valid produce items found. Check file format.'] : errors,
       detectedType: 'produce-planner',
     };
   }
