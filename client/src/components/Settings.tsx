@@ -69,6 +69,8 @@ export function Settings({ open, onOpenChange }: SettingsProps) {
     onOpenChange(false);
   };
 
+  const [activeTab, setActiveTab] = useState("ai");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -79,11 +81,11 @@ export function Settings({ open, onOpenChange }: SettingsProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="ai" className="mt-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="ai">AI Assistant</TabsTrigger>
-            <TabsTrigger value="scoring">Scoring</TabsTrigger>
-            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="ai" data-testid="settings-tab-ai">AI Assistant</TabsTrigger>
+            <TabsTrigger value="scoring" data-testid="settings-tab-scoring">Scoring</TabsTrigger>
+            <TabsTrigger value="general" data-testid="settings-tab-general">General</TabsTrigger>
           </TabsList>
 
           <TabsContent value="ai" className="space-y-4">

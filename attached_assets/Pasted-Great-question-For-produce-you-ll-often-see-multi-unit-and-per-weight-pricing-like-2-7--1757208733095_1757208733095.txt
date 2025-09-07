@@ -1,0 +1,214 @@
+Great question. For produce, you’ll often see **multi-unit** and **per-weight** pricing like `2/7`, `3 for $5`, `10/$10`, `$1.99/lb`, or even promos like `BOGO`. The key is to **canonicalize Ad SRP to a per-unit price** (and keep the original offer for display), then compute GP\$ and GP% from the **per-unit** Ad SRP and **Net Unit Cost**.
+
+Here’s a drop-in plan with code you can paste into your app.
+
+---
+
+# 1) Parse Ad SRP offers into per-unit values
+
+**Create** `src/lib/parsePrice.ts`:
+
+```ts
+export type ParsedOffer = {
+  offerRaw: string;
+  unitCount?: number;        // e.g. 2 in "2/7"
+  priceTotal?: number;       // e.g. 7 in "2/7" ($7 total for the bundle)
+  priceEach?: number;        // canonical per-each price (what we use for margins)
+  unitBasis?: 'ea' | 'lb' | 'oz' | string;
+  promoType?: 'MULTI' | 'PER_WEIGHT' | 'BOGO' | 'SINGLE' | 'UNKNOWN';
+};
+
+const toNum = (s?: string) => {
+  if (!s) return undefined;
+  const cleaned = s.replace(/[$,\s]/g, '');
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+export function parseAdSrpOffer(input?: string): ParsedOffer {
+  const offerRaw = (input ?? '').trim();
+  if (!offerRaw) return { offerRaw, promoType: 'UNKNOWN' };
+
+  const s = offerRaw.replace(/\s+/g, ' ').toLowerCase();
+
+  // 1) Multi-unit patterns: "2/7", "2 for 7", "2 for $7", "$7 for 2", "10/$10"
+  // a) "X/Y" where X units for $Y  (e.g., "2/7", "10/10")
+  let m = s.match(/^(\d+)\s*\/\s*\$?(\d+(?:\.\d+)?)$/);
+  if (m) {
+    const unitCount = Number(m[1]);
+    const priceTotal = Number(m[2]);
+    const priceEach = unitCount ? priceTotal / unitCount : undefined;
+    return { offerRaw, unitCount, priceTotal, priceEach, unitBasis: 'ea', promoType: 'MULTI' };
+  }
+
+  // b) "X for Y" or "X for $Y"
+  m = s.match(/^(\d+)\s*for\s*\$?(\d+(?:\.\d+)?)$/);
+  if (m) {
+    const unitCount = Number(m[1]);
+    const priceTotal = Number(m[2]);
+    const priceEach = unitCount ? priceTotal / unitCount : undefined;
+    return { offerRaw, unitCount, priceTotal, priceEach, unitBasis: 'ea', promoType: 'MULTI' };
+  }
+
+  // c) "$Y for X"
+  m = s.match(/^\$?(\d+(?:\.\d+)?)\s*for\s*(\d+)$/);
+  if (m) {
+    const priceTotal = Number(m[1]);
+    const unitCount = Number(m[2]);
+    const priceEach = unitCount ? priceTotal / unitCount : undefined;
+    return { offerRaw, unitCount, priceTotal, priceEach, unitBasis: 'ea', promoType: 'MULTI' };
+  }
+
+  // 2) Per-weight: "$1.99/lb", "$0.99 per lb", "$4.99/lb"
+  m = s.match(/^\$?(\d+(?:\.\d+)?)\s*(?:\/|per\s+)(lb|lbs|pound|oz)$/);
+  if (m) {
+    const priceEach = Number(m[1]); // per-lb or per-oz price
+    const basis = m[2] === 'lbs' || m[2] === 'pound' ? 'lb' : (m[2] as 'lb' | 'oz');
+    return { offerRaw, unitBasis: basis, priceEach, promoType: 'PER_WEIGHT' };
+  }
+
+  // 3) Single price: "$3.50" or "3.50"
+  m = s.match(/^\$?(\d+(?:\.\d+)?)$/);
+  if (m) {
+    const priceEach = Number(m[1]);
+    return { offerRaw, unitBasis: 'ea', priceEach, promoType: 'SINGLE' };
+  }
+
+  // 4) BOGO / B1G1 / BOGO 50%
+  if (/\bbogo\b|b1g1/.test(s)) {
+    // If you also have REGSRP, you can compute effective per-each as regSrp/2.
+    return { offerRaw, promoType: 'BOGO' };
+  }
+
+  return { offerRaw, promoType: 'UNKNOWN' };
+}
+```
+
+---
+
+# 2) Integrate into normalization
+
+**Edit** `src/lib/normalizeDeals.ts` to use the parser and store a canonical **`adSrpEach`** while keeping the raw offer:
+
+```ts
+import { parseAdSrpOffer } from './parsePrice';
+
+// ... inside normalizeRow(...)
+const adSrpRaw = String(r['AD_SRP'] ?? r['Ad SRP'] ?? r['ADS RP'] ?? '').trim();
+const parsed = parseAdSrpOffer(adSrpRaw);
+
+// If your CSV sometimes already provides numeric AD_SRP per-each, keep that as fallback
+const adSrpNumeric = (() => {
+  const raw = String(r['AD_SRP'] ?? '').trim();
+  const n = raw ? Number(raw.replace(/[$,]/g, '')) : NaN;
+  return Number.isFinite(n) ? n : undefined;
+})();
+
+const adSrpEach = parsed.priceEach ?? adSrpNumeric;
+
+return {
+  // ... existing fields
+  adSrpRaw,                 // keep original display like "2/7"
+  adSrp: adSrpEach,         // canonical per-each price for math
+  adSrpOffer: parsed,       // full structured parse (unitCount, priceTotal, promoType, unitBasis)
+  // ...
+};
+```
+
+---
+
+# 3) Compute GP\$ / GP% correctly (per-unit)
+
+Where you compute margins (table or selector), switch to **per-unit** Ad SRP:
+
+```ts
+const gpDollars = (adSrp?: number, netUnitCost?: number) =>
+  adSrp != null && netUnitCost != null ? adSrp - netUnitCost : undefined;
+
+const gpPct = (adSrp?: number, netUnitCost?: number) =>
+  adSrp && netUnitCost != null && adSrp !== 0 ? (adSrp - netUnitCost) / adSrp : undefined;
+```
+
+For **Required SRP** at a margin target:
+
+```ts
+const requiredSrp = (netUnitCost?: number, target=0.30) =>
+  netUnitCost != null ? netUnitCost / (1 - target) : undefined;
+```
+
+> These remain valid for **per-weight** items too; just interpret `adSrp` and `netUnitCost` on the same unit basis (e.g., per lb). If your Net Unit Cost is per-each but the offer is per-lb, you’ll need a conversion factor (e.g., average weight per each)—you can store that on the item or dept as a config.
+
+---
+
+# 4) Show the math explicitly in the UI
+
+In the **Deals table**, show both the original offer and the canonical each price. For `2/7`, users will see “2 for \$7 → \$3.50 ea”.
+
+```tsx
+// In the Ad SRP column cell:
+<div className="flex flex-col">
+  <div className="font-medium">
+    {deal.adSrpRaw || (deal.adSrp != null ? `$${deal.adSrp.toFixed(2)}` : '-')}
+  </div>
+  {deal.adSrp != null && (
+    <div className="text-xs text-muted-foreground">
+      {deal.adSrpOffer?.promoType === 'MULTI'
+        ? `${deal.adSrpOffer.unitCount} for $${deal.adSrpOffer.priceTotal?.toFixed(2)} → $${deal.adSrp.toFixed(2)} ea`
+        : deal.adSrpOffer?.promoType === 'PER_WEIGHT'
+          ? `$${deal.adSrp.toFixed(2)}/${deal.adSrpOffer.unitBasis}`
+          : `$${deal.adSrp.toFixed(2)} ea`}
+    </div>
+  )}
+</div>
+```
+
+Add two new columns **GP\$** and **GP%** (sortable like we did earlier):
+
+```tsx
+<td className="text-right">
+  {deal.adSrp != null && deal.netUnitCost != null ? `$${(deal.adSrp - deal.netUnitCost).toFixed(2)}` : '-'}
+</td>
+<td className="text-right">
+  {deal.adSrp != null && deal.netUnitCost != null && deal.adSrp !== 0
+    ? `${(((deal.adSrp - deal.netUnitCost) / deal.adSrp) * 100).toFixed(1)}%`
+    : '-'}
+</td>
+```
+
+Optional tooltip with the explicit formula:
+
+```tsx
+<td className="text-right" title={`${deal.adSrp?.toFixed(2)} - ${deal.netUnitCost?.toFixed(2)} = ${(deal.adSrp && deal.netUnitCost) ? (deal.adSrp - deal.netUnitCost).toFixed(2) : '-'}`}>
+  {/* GP$ cell content */}
+</td>
+```
+
+---
+
+# 5) Sorting + Filters (works with multi-unit too)
+
+Because we’ve normalized **`deal.adSrp`** to a **number per unit**, your existing sorters for Ad SRP, GP\$, and GP% just work. Keep `onSort('adSrp')`, `onSort('gp$')`, `onSort('gp%')`. Header filters (e.g., “Min GP%”) will also work on the canonical numbers.
+
+---
+
+# 6) Edge cases & guidance
+
+* **10/\$10** → 10 for 10 → `$1.00 ea` (handled by MULTI patterns).
+* **\$7 for 2** → `$3.50 ea` (handled).
+* **BOGO** without a price: set `promoType: 'BOGO'` and, if `REGSRP` is present, you can compute an **effective ad price** as `regSrp / 2` for display & margins. If `REGSRP` is missing, show the badge “BOGO” and omit GP\$ until you have a per-unit price.
+* **Per-weight** (`$1.99/lb`): keep `unitBasis = 'lb'` and ensure `Net Unit Cost` is in the same basis to compute margin. If not, add a dept-level conversion (e.g., “avg item = 0.6 lb”).
+* Always **retain** the original `adSrpRaw` for auditing/UX, even after parsing.
+
+---
+
+## Quick acceptance test for your exact example
+
+Input: `AD SRP = "2/7"`, `NET UNIT COST = 1.72`
+
+* Parsed: `unitCount=2`, `priceTotal=7`, `priceEach=3.50`
+* Display: “**2 for \$7 → \$3.50 ea**”
+* **GP\$**: `3.50 − 1.72 = $1.78`
+* **GP%**: `1.78 / 3.50 = 50.9%`
+* **Required SRP @30%**: `1.72 / 0.70 = $2.46`
+
+If you want, I can also add a tiny Jest test for `parseAdSrpOffer` to lock this down.
