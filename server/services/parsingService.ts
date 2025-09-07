@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import type { InsertDealRow } from '@shared/schema';
 import { aiService } from './aiService';
-import pdfParse from 'pdf-parse';
+import { parseOfficeAsync } from 'officeparser';
 
 interface ParsedDeal {
   itemCode: string;
@@ -637,8 +637,9 @@ class ParsingService {
     }
 
     try {
-      // Step 1: Extract text from PDF
+      // Step 1: Extract text from PDF using dynamic import to avoid startup issues
       const fileBuffer = await fs.readFile(filePath);
+      const pdfParse = (await import('pdf-parse')).default;
       const pdfData = await pdfParse(fileBuffer);
       const extractedText = pdfData.text;
       
@@ -654,15 +655,16 @@ class ParsingService {
         dept: this.normalizeDept(deal.dept || ''),
         upc: this.cleanUPC(deal.upc || ''),
         cost: this.parseNumber(deal.cost),
+        netUnitCost: this.parseNumber(deal.netUnitCost) || this.parseNumber(deal.cost),
         srp: this.parseNumber(deal.srp),
         adSrp: this.parseNumber(deal.adSrp),
-        vendorFundingPct: this.parsePercentage(deal.funding),
+        vendorFundingPct: this.parsePercentage(deal.vendorFundingPct) || this.parsePercentage(deal.funding),
         mvmt: this.parseNumber(deal.mvmt),
         competitorPrice: this.parseNumber(deal.competitorPrice),
         pack: deal.pack,
         size: deal.size,
-        promoStart: deal.startDate ? new Date(deal.startDate) : undefined,
-        promoEnd: deal.endDate ? new Date(deal.endDate) : undefined,
+        promoStart: deal.promoStart ? new Date(deal.promoStart) : undefined,
+        promoEnd: deal.promoEnd ? new Date(deal.promoEnd) : undefined,
       }));
       
       return {
@@ -697,9 +699,13 @@ class ParsingService {
     }
 
     try {
-      // Read file and apply AI extraction
-      const fileBuffer = await fs.readFile(filePath);
-      const aiResult = await aiService.parseDocument(fileBuffer, path.basename(filePath), 'pptx');
+      // Step 1: Extract text from PowerPoint
+      const extractedText = await parseOfficeAsync(filePath);
+      
+      console.log(`Extracted ${extractedText.length} characters from PowerPoint`);
+      
+      // Step 2: Parse extracted text with AI
+      const aiResult = await aiService.parseExtractedText(extractedText, path.basename(filePath), 'pptx');
       
       // Map AI results to our deal format
       const deals: ParsedDeal[] = aiResult.deals.map((deal: any) => ({
@@ -708,30 +714,32 @@ class ParsingService {
         dept: this.normalizeDept(deal.dept || ''),
         upc: this.cleanUPC(deal.upc || ''),
         cost: this.parseNumber(deal.cost),
+        netUnitCost: this.parseNumber(deal.netUnitCost) || this.parseNumber(deal.cost),
         srp: this.parseNumber(deal.srp),
         adSrp: this.parseNumber(deal.adSrp),
-        vendorFundingPct: this.parsePercentage(deal.funding),
+        vendorFundingPct: this.parsePercentage(deal.vendorFundingPct) || this.parsePercentage(deal.funding),
         mvmt: this.parseNumber(deal.mvmt),
         competitorPrice: this.parseNumber(deal.competitorPrice),
         pack: deal.pack,
         size: deal.size,
-        promoStart: deal.startDate ? new Date(deal.startDate) : undefined,
-        promoEnd: deal.endDate ? new Date(deal.endDate) : undefined,
+        promoStart: deal.promoStart ? new Date(deal.promoStart) : undefined,
+        promoEnd: deal.promoEnd ? new Date(deal.promoEnd) : undefined,
       }));
       
       return {
         deals,
         totalRows: aiResult.totalExtracted || deals.length,
         parsedRows: deals.length,
-        errors: aiResult.warnings || [],
+        errors: [],
         detectedType: 'pptx',
       };
     } catch (error) {
+      console.error('PowerPoint parsing error:', error);
       return {
         deals: [],
         totalRows: 0,
         parsedRows: 0,
-        errors: [`AI PowerPoint extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        errors: [`PowerPoint extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
         detectedType: 'pptx',
       };
     }
