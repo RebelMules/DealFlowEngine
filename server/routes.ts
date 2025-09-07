@@ -33,7 +33,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: "ok", 
       timestamp: new Date().toISOString(),
       aiEnabled: aiService.isEnabled(),
+      aiConfigured: aiService.canProcessDocument(),
       database: "connected",
+    });
+  });
+
+  // AI status endpoint
+  app.get("/api/ai/status", (req, res) => {
+    res.json({
+      enabled: aiService.isEnabled(),
+      canProcess: aiService.canProcessDocument(),
+      budgetStatus: aiService.getBudgetStatus(),
+      supportedFormats: ['pdf', 'pptx', 'excel', 'csv'],
+      message: aiService.canProcessDocument() 
+        ? 'AI is active and ready to process documents'
+        : 'AI requires API keys to be configured',
     });
   });
 
